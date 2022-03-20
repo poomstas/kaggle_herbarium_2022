@@ -1,10 +1,10 @@
 # %%
-import os
 import cv2
+import torch
 import numpy as np
 import pandas as pd
 import matplotlib.image as mpimg
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, random_split
 from torchvision import transforms
 
 import albumentations as A
@@ -23,13 +23,17 @@ class HerbariumDataset(Dataset):
     
     def __getitem__(self, index):
         img_fullpath = self.df['directory'][index]
-        img = mpimg.imread(img_fullpath)
+        img = mpimg.imread(img_fullpath) # Reads in [H, W, C]
 
         if (self.target_size, self.target_size) != img.shape[:2]:
             img = cv2.resize(img, (self.target_size, self.target_size))
 
         if self.transform is not None:
             img = self.transform(image=img)["image"]
+        
+        img = np.transpose(img, (2, 1, 0)) # Convert from [H, W, C] to [C, W, H] and convert it to float
+        # TODO: Reduce computation by loading in the image in a format that doesn't require transposing
+        img = torch.from_numpy(img).float() # Convert from np.array to torch float
         
         if self.testset:
             return img
@@ -67,3 +71,6 @@ if __name__=='__main__':
             break
         print(img.shape)
         print(category)
+
+    # How to do splits correctly, for reference
+    train_dataset, val_dataset = random_split(ds_train, [round(len(ds_train)*0.8), round(len(ds_train)*0.2)])
