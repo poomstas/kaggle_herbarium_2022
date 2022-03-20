@@ -10,6 +10,10 @@ from torchvision import transforms
 import albumentations as A
 from albumentations.pytorch.transforms import ToTensorV2
 
+# Load the file even if the image file is truncated. See: https://discuss.pytorch.org/t/oserror-image-file-is-truncated-150-bytes-not-processed/64445
+from PIL import ImageFile
+ImageFile.LOAD_TRUNCATED_IMAGES = True
+
 # %%
 class HerbariumDataset(Dataset):
     def __init__(self, csv_fullpath, transform=None, target_size=299, testset=False):
