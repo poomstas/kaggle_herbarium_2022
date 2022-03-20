@@ -112,7 +112,7 @@ class LightningHerb(pl.LightningModule):
         images, category = batch
         outputs = self(images) # Forward pass
         loss = F.cross_entropy(outputs, category)
-        tensorboard_logs = {'train_loss': loss}
+        tensorboard_logs = {'train_loss': loss.detach()}
         return {'loss': loss, 'log': tensorboard_logs}
         
     def validation_step(self, batch, batch_idx):
@@ -123,13 +123,14 @@ class LightningHerb(pl.LightningModule):
 
     def validation_epoch_end(self, outputs): # Run this at the end of a validation epoch
         avg_loss = torch.stack([x['val_loss'] for x in outputs]).mean()
-        tensorboard_logs = {'val_loss': avg_loss}
+        tensorboard_logs = {'val_loss': avg_loss.detach()}
         return {'val_loss': avg_loss, 'log': tensorboard_logs}
 
 # %%
 if __name__=='__main__':
     # fast_dev_run=True will run a single-batch through training and validation and test if the code works.
-    trainer = Trainer(max_epochs=NUM_EPOCHS, fast_dev_run=False, gpus=4, auto_lr_find=True)
+    trainer = Trainer(max_epochs=NUM_EPOCHS, fast_dev_run=False, gpus=4, auto_lr_find=True,
+                        default_root_dir='../lightning_logs/')
 
     model = LightningHerb(backbone='xception', input_size=INPUT_SIZE, transforms=TRANSFORMS, num_classes=NUM_CLASSES,
                           batch_size=BATCH_SIZE, lr=LR, pretrained=True, n_hidden_nodes=N_HIDDEN_NODES, num_workers=NUM_WORKERS)
