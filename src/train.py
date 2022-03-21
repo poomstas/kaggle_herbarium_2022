@@ -130,7 +130,7 @@ class LightningHerb(pl.LightningModule):
 if __name__=='__main__':
     # fast_dev_run=True will run a single-batch through training and validation and test if the code works.
     trainer = Trainer(max_epochs=NUM_EPOCHS, fast_dev_run=False, gpus=2, auto_lr_find=True,
-                        default_root_dir='../
+                        default_root_dir='../')
 
     model = LightningHerb(backbone='xception', input_size=INPUT_SIZE, transforms=TRANSFORMS, num_classes=NUM_CLASSES,
                           batch_size=BATCH_SIZE, lr=LR, pretrained=True, n_hidden_nodes=N_HIDDEN_NODES, num_workers=NUM_WORKERS)
