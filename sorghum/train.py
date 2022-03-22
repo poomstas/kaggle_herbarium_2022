@@ -1,5 +1,7 @@
 # %%
 import sys
+import csv
+from datetime import datetime
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -16,8 +18,10 @@ from albumentations.pytorch.transforms import ToTensorV2
 
 sys.path.append('./src/')
 from data import SorghumDataset
+from constants import CULTIVAR_LABELS, CULTIVAR_LABELS_ALT
 
 from pretrainedmodels import xception, densenet121, densenet201
+
 
 # %% Hyperparameters
 INPUT_SIZE = 299 # For xception
@@ -57,6 +61,9 @@ class SorghumLitModel(pl.LightningModule):
         self.input_size = input_size
         self.backbone = backbone
         self.n_hidden_nodes = n_hidden_nodes
+
+        self.tests_result_csv_filename = 'test_result_{}.csv'.format(datetime.now().strftime('%Y%m%d_%H%M%S'))
+        self.csv_header_written = False
 
         if self.backbone == 'xception': # INPUT_SIZE = 3 x 299 x 299
             self.model = xception(num_classes=1000, pretrained='imagenet' if pretrained else False)
@@ -142,6 +149,19 @@ class SorghumLitModel(pl.LightningModule):
     def validation_epoch_end(self, outputs): # Run this at the end of a validation epoch
         avg_loss = torch.stack([x['val_loss'] for x in outputs]).mean()
         self.log('val_loss_avg', avg_loss)
+
+    def test_step(self, batch, batch_idx):
+        images, filenames = batch
+        filenames = list(filenames)
+        out = self.forward(images)
+        out_indx = torch.argmax(out, dim=1).tolist()
+
+        with open(self.tests_result_csv_filename, 'a') as f:
+            writer = csv.writer(f)
+            if not self.csv_header_written:
+                writer.writerow(['filename', 'cultivar'])
+            for classification, filename in zip(out_indx, filenames):
+                writer.writerow([filename, CULTIVAR_LABELS[classification]])
 
 # %%
 if __name__=='__main__':

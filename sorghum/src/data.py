@@ -66,7 +66,8 @@ class SorghumDataset(Dataset):
         # img = torch.from_numpy(img).float() # Convert from np.array to torch float
         
         if self.testset:
-            return img
+            filename = self.df['image'][index].split('/')[-1]
+            return img, filename
         else:
             cultivar = self.df['cultivar'][index]
             cultivar_indx = CULTIVAR_LABELS_ALT[cultivar] # e.g.) 'PI_329319' to 91
