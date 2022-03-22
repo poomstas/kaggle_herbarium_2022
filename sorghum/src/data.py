@@ -68,7 +68,8 @@ class SorghumDataset(Dataset):
             return img
         else:
             cultivar = self.df['cultivar'][index]
-            return img, cultivar
+            cultivar_indx = CULTIVAR_LABELS_ALT[cultivar] # e.g.) 'PI_329319' to 91
+            return img, cultivar_indx
 
 # %%
 if __name__=='__main__':
