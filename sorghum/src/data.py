@@ -45,6 +45,7 @@ class SorghumDataset(Dataset):
             self.df.drop(image_unavailable_indx, axis=0, inplace=True)
             self.df = self.df.reset_index()
             print('Validated dataset length (CSV):', len(self.df))
+            print('Number of Classes:', self.df)
     
     def __len__(self):
         return len(self.df)

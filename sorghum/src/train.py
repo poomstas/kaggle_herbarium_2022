@@ -19,8 +19,8 @@ from pretrainedmodels import xception, densenet121, densenet201
 
 # %% Hyperparameters
 INPUT_SIZE = 299 # For xception
-N_HIDDEN_NODES = None # If none, no hidden layer
-NUM_CLASSES = 15505
+N_HIDDEN_NODES = 500 # If none, no hidden layer
+NUM_CLASSES = 100
 NUM_EPOCHS = 20
 BATCH_SIZE = 256
 LR = 0.001
@@ -28,10 +28,10 @@ NUM_WORKERS= 16 # use os.cpu_count()
 TRANSFORMS = None
 
 # %%
-class LightningHerb(pl.LightningModule):
+class SorghumLitModel(pl.LightningModule):
     def __init__(self, backbone, input_size, transforms, num_classes, batch_size, lr, n_hidden_nodes, 
                  pretrained=True, num_workers=4):
-        super(LightningHerb, self).__init__()
+        super(SorghumLitModel, self).__init__()
 
         # self.transforms = A.Compose([
         #     A.HorizontalFlip(p=0.5),
@@ -66,7 +66,7 @@ class LightningHerb(pl.LightningModule):
             self.relu = nn.ReLU()
             self.fc1 = nn.Linear(n_hidden_nodes, num_classes)
 
-        trainval_dataset = HerbariumDataset(csv_fullpath='/home/brian/github/kaggle_herbarium_2022/herbarium_2022/train.csv', 
+        trainval_dataset = SorghumDataset(csv_fullpath='/home/brian/dataset/sorghum/train_cultivar_mapping.csv',
                                    transform=self.transforms,
                                    target_size=self.input_size,
                                    testset=False)
@@ -109,16 +109,16 @@ class LightningHerb(pl.LightningModule):
         return val_loader
 
     def training_step(self, batch, batch_idx):
-        images, category = batch
+        images, cultivar_indx = batch
         outputs = self(images) # Forward pass
-        loss = F.cross_entropy(outputs, category)
+        loss = F.cross_entropy(outputs, cultivar_indx)
         tensorboard_logs = {'train_loss': loss.detach()}
         return {'loss': loss, 'log': tensorboard_logs}
         
     def validation_step(self, batch, batch_idx):
-        images, category = batch
+        images, cultivar_indx = batch
         outputs = self(images) # Forward pass
-        loss = F.cross_entropy(outputs, category)
+        loss = F.cross_entropy(outputs, cultivar_indx)
         return {'val_loss': loss}
 
     def validation_epoch_end(self, outputs): # Run this at the end of a validation epoch
@@ -132,7 +132,7 @@ if __name__=='__main__':
     trainer = Trainer(max_epochs=NUM_EPOCHS, fast_dev_run=False, gpus=2, auto_lr_find=True,
                         default_root_dir='../', precision=16) # mixed precision training
 
-    model = LightningHerb(backbone='xception', input_size=INPUT_SIZE, transforms=TRANSFORMS, num_classes=NUM_CLASSES,
+    model = SorghumLitModel(backbone='xception', input_size=INPUT_SIZE, transforms=TRANSFORMS, num_classes=NUM_CLASSES,
                           batch_size=BATCH_SIZE, lr=LR, pretrained=True, n_hidden_nodes=N_HIDDEN_NODES, num_workers=NUM_WORKERS)
 
     trainer.fit(model)
