@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import pytorch_lightning as pl
 from pytorch_lightning import Trainer
 from pytorch_lightning.loggers import TensorBoardLogger
+from pytorch_lightning.callbacks import ModelCheckpoint
 
 import albumentations as A
 from albumentations.pytorch.transforms import ToTensorV2
@@ -62,7 +63,8 @@ class SorghumLitModel(pl.LightningModule):
         self.backbone = backbone
         self.n_hidden_nodes = n_hidden_nodes
 
-        self.tests_result_csv_filename = 'test_result_{}.csv'.format(datetime.now().strftime('%Y%m%d_%H%M%S'))
+        self.now = datetime.now().strftime('%Y%m%d_%H%M%S')
+        self.tests_result_csv_filename = 'test_result_{}.csv'.format(self.now)
         self.csv_header_written = False
 
         if self.backbone == 'xception': # INPUT_SIZE = 3 x 299 x 299
@@ -165,8 +167,16 @@ class SorghumLitModel(pl.LightningModule):
 
 # %%
 if __name__=='__main__':
+    now = datetime.now().strftime('%Y%m%d_%H%M%S')
+
     # fast_dev_run=True will run a single-batch through training and validation and test if the code works.
-    logger = TensorBoardLogger('./tb_logs', name=None)
+    logger = TensorBoardLogger('./tb_logs', name=now)
+
+    # Saves checkpoints at every epoch
+    checkpoint_callback = ModelCheckpoint(dirpath='./tb_logs/{}/'.format(now), 
+                                          monitor='val_loss', 
+                                          filename='{epoch:02d}-{val_loss:.2f}',
+                                          save_top_k = 4)
 
     trainer = Trainer(max_epochs            = NUM_EPOCHS, 
                       fast_dev_run          = False, 
@@ -175,7 +185,9 @@ if __name__=='__main__':
                       default_root_dir      = '../', 
                       precision             = 16,  # mixed precision training
                       logger                = logger,
-                      log_every_n_steps     = 10)
+                      log_every_n_steps     = 10,
+                      strategy              = 'ddp_spawn',
+                      callbacks             = [checkpoint_callback])
 
     model = SorghumLitModel(backbone        = 'xception', 
                             input_size      = INPUT_SIZE, 
