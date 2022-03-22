@@ -22,9 +22,9 @@ INPUT_SIZE = 299 # For xception
 N_HIDDEN_NODES = None # If none, no hidden layer
 NUM_CLASSES = 15505
 NUM_EPOCHS = 20
-BATCH_SIZE = 128
+BATCH_SIZE = 256
 LR = 0.001
-NUM_WORKERS= 4
+NUM_WORKERS= 16 # use os.cpu_count()
 TRANSFORMS = None
 
 # %%
@@ -66,7 +66,7 @@ class LightningHerb(pl.LightningModule):
             self.relu = nn.ReLU()
             self.fc1 = nn.Linear(n_hidden_nodes, num_classes)
 
-        trainval_dataset = HerbariumDataset(csv_fullpath='/home/brian/github/kaggle_herbarium_2022/train.csv', 
+        trainval_dataset = HerbariumDataset(csv_fullpath='/home/brian/github/kaggle_herbarium_2022/herbarium_2022/train.csv', 
                                    transform=self.transforms,
                                    target_size=self.input_size,
                                    testset=False)
@@ -130,7 +130,7 @@ class LightningHerb(pl.LightningModule):
 if __name__=='__main__':
     # fast_dev_run=True will run a single-batch through training and validation and test if the code works.
     trainer = Trainer(max_epochs=NUM_EPOCHS, fast_dev_run=False, gpus=2, auto_lr_find=True,
-                        default_root_dir='../')
+                        default_root_dir='../', precision=16) # mixed precision training
 
     model = LightningHerb(backbone='xception', input_size=INPUT_SIZE, transforms=TRANSFORMS, num_classes=NUM_CLASSES,
                           batch_size=BATCH_SIZE, lr=LR, pretrained=True, n_hidden_nodes=N_HIDDEN_NODES, num_workers=NUM_WORKERS)
