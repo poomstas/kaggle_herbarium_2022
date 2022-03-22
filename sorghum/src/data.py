@@ -91,6 +91,8 @@ if __name__=='__main__':
         ToTensorV2()
     ])
 
+    # Train Dataset
+    print('Testing Training Dataset')
     ds_train = SorghumDataset(csv_fullpath='/home/brian/dataset/sorghum/train_cultivar_mapping.csv', 
                               transform=transforms)
     dl_train = DataLoader(dataset=ds_train,
@@ -103,6 +105,22 @@ if __name__=='__main__':
             break
         print(img.shape)
         print(cultivar)
+
+    # Test Dataset
+    print('='*90)
+    print('Testing Test Dataset')
+    ds_train = SorghumDataset(csv_fullpath='../test.csv',
+                              transform=transforms,
+                              testset=True)
+    dl_train = DataLoader(dataset=ds_train,
+                          shuffle=True,
+                          batch_size=3,
+                          num_workers=4)
+
+    for i, img in enumerate(dl_train):
+        if i > 10:
+            break
+        print(img.shape)
 
     # How to do splits correctly, for reference
     train_dataset, val_dataset = random_split(ds_train, [round(len(ds_train)*0.8), round(len(ds_train)*0.2)])
