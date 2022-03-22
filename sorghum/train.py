@@ -18,7 +18,6 @@ sys.path.append('./src/')
 from data import SorghumDataset
 
 from pretrainedmodels import xception, densenet121, densenet201
-# from torchsummary import summary
 
 # %% Hyperparameters
 INPUT_SIZE = 299 # For xception
@@ -35,6 +34,7 @@ class SorghumLitModel(pl.LightningModule):
     def __init__(self, backbone, input_size, transforms, num_classes, batch_size, lr, n_hidden_nodes, 
                  pretrained=True, num_workers=4):
         super(SorghumLitModel, self).__init__()
+        self.save_hyperparameters() # Need this later to load_from_checkpoint without providing the hyperparams again
 
         # self.transforms = A.Compose([
         #     A.HorizontalFlip(p=0.5),
@@ -146,7 +146,7 @@ class SorghumLitModel(pl.LightningModule):
 # %%
 if __name__=='__main__':
     # fast_dev_run=True will run a single-batch through training and validation and test if the code works.
-    logger = TensorBoardLogger('../tb_logs', name=None)
+    logger = TensorBoardLogger('./tb_logs', name=None)
 
     trainer = Trainer(max_epochs            = NUM_EPOCHS, 
                       fast_dev_run          = False, 
@@ -155,7 +155,7 @@ if __name__=='__main__':
                       default_root_dir      = '../', 
                       precision             = 16,  # mixed precision training
                       logger                = logger,
-                      log_every_n_steps     = 35)
+                      log_every_n_steps     = 10)
 
     model = SorghumLitModel(backbone        = 'xception', 
                             input_size      = INPUT_SIZE, 
