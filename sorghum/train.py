@@ -1,4 +1,5 @@
 # %%
+import sys
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -13,6 +14,7 @@ from pytorch_lightning.loggers import TensorBoardLogger
 import albumentations as A
 from albumentations.pytorch.transforms import ToTensorV2
 
+sys.path.append('./src/')
 from data import SorghumDataset
 
 from pretrainedmodels import xception, densenet121, densenet201
