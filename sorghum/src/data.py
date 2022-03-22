@@ -11,6 +11,8 @@ from torchvision import transforms
 import albumentations as A
 from albumentations.pytorch.transforms import ToTensorV2
 
+from constants import CULTIVAR_LABELS, CULTIVAR_LABELS_ALT
+
 # Load the file even if the image file is truncated. 
 # See: https://discuss.pytorch.org/t/oserror-image-file-is-truncated-150-bytes-not-processed/64445
 from PIL import ImageFile
@@ -32,6 +34,17 @@ class SorghumDataset(Dataset):
 
         self.dataset_root               = dataset_root
         self.df['image'] = [os.path.join(dataset_root, img_path) for img_path in self.df['image']]
+
+        # Check if dataset exists. If not, then remove it from the dataframe.
+        if not testset:
+            print('Original dataset length (CSV):', len(self.df))
+            image_unavailable_indx = []
+            for indx, row in self.df.iterrows(): 
+                if not os.path.exists(row['image']):
+                    image_unavailable_indx.append(indx)
+            self.df.drop(image_unavailable_indx, axis=0, inplace=True)
+            self.df = self.df.reset_index()
+            print('Validated dataset length (CSV):', len(self.df))
     
     def __len__(self):
         return len(self.df)
