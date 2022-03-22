@@ -8,11 +8,12 @@ import matplotlib.pyplot as plt
 
 import pytorch_lightning as pl
 from pytorch_lightning import Trainer
+from pytorch_lightning.loggers import TensorBoardLogger
 
 import albumentations as A
 from albumentations.pytorch.transforms import ToTensorV2
 
-from data import HerbariumDataset
+from data import SorghumDataset
 
 from pretrainedmodels import xception, densenet121, densenet201
 # from torchsummary import summary
@@ -22,7 +23,7 @@ INPUT_SIZE = 299 # For xception
 N_HIDDEN_NODES = 500 # If none, no hidden layer
 NUM_CLASSES = 100
 NUM_EPOCHS = 20
-BATCH_SIZE = 256
+BATCH_SIZE = 256 # effective batch size = batch_size * gpus * num_nodes
 LR = 0.001
 NUM_WORKERS= 16 # use os.cpu_count()
 TRANSFORMS = None
@@ -110,29 +111,58 @@ class SorghumLitModel(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         images, cultivar_indx = batch
-        outputs = self(images) # Forward pass
-        loss = F.cross_entropy(outputs, cultivar_indx)
-        tensorboard_logs = {'train_loss': loss.detach()}
-        return {'loss': loss, 'log': tensorboard_logs}
+        pred = self.forward(images) # Forward pass
+        train_loss = F.cross_entropy(pred, cultivar_indx)
+
+        correct = pred.argmax(dim=1).eq(cultivar_indx).sum().item()
+        accuracy = correct / len(cultivar_indx)
+        self.log('train_loss', train_loss)
+        self.log('train_acc', accuracy)
+
+        return {'loss': train_loss}
+
+    def training_epoch_end(self, outputs):
+        avg_loss = torch.stack([x['loss'] for x in outputs]).mean()
+        self.log('train_loss_avg', avg_loss)
         
     def validation_step(self, batch, batch_idx):
         images, cultivar_indx = batch
-        outputs = self(images) # Forward pass
-        loss = F.cross_entropy(outputs, cultivar_indx)
-        return {'val_loss': loss}
+        pred = self.forward(images) # Forward pass
+        val_loss = F.cross_entropy(pred, cultivar_indx)
+
+        correct = pred.argmax(dim=1).eq(cultivar_indx).sum().item()
+        accuracy = correct / len(cultivar_indx)
+        self.log('val_loss', val_loss)
+        self.log('val_acc', accuracy)
+
+        return {'val_loss': val_loss}
 
     def validation_epoch_end(self, outputs): # Run this at the end of a validation epoch
         avg_loss = torch.stack([x['val_loss'] for x in outputs]).mean()
-        tensorboard_logs = {'val_loss': avg_loss.detach()}
-        return {'val_loss': avg_loss, 'log': tensorboard_logs}
+        self.log('val_loss_avg', avg_loss)
 
 # %%
 if __name__=='__main__':
     # fast_dev_run=True will run a single-batch through training and validation and test if the code works.
-    trainer = Trainer(max_epochs=NUM_EPOCHS, fast_dev_run=False, gpus=2, auto_lr_find=True,
-                        default_root_dir='../', precision=16) # mixed precision training
+    logger = TensorBoardLogger('../tb_logs', name=None)
 
-    model = SorghumLitModel(backbone='xception', input_size=INPUT_SIZE, transforms=TRANSFORMS, num_classes=NUM_CLASSES,
-                          batch_size=BATCH_SIZE, lr=LR, pretrained=True, n_hidden_nodes=N_HIDDEN_NODES, num_workers=NUM_WORKERS)
+    trainer = Trainer(max_epochs            = NUM_EPOCHS, 
+                      fast_dev_run          = False, 
+                      gpus                  = 2, 
+                      auto_lr_find          = True,
+                      default_root_dir      = '../', 
+                      precision             = 16,  # mixed precision training
+                      logger                = logger,
+                      log_every_n_steps     = 35)
+
+    model = SorghumLitModel(backbone        = 'xception', 
+                            input_size      = INPUT_SIZE, 
+                            transforms      = TRANSFORMS, 
+                            num_classes     = NUM_CLASSES,
+                            batch_size      = BATCH_SIZE, 
+                            lr              = LR, 
+                            pretrained      = True, 
+                            n_hidden_nodes  = N_HIDDEN_NODES, 
+                            num_workers     = NUM_WORKERS)
 
     trainer.fit(model)
