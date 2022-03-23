@@ -28,11 +28,21 @@ from pretrainedmodels import xception, densenet121, densenet201
 INPUT_SIZE = 299 # For xception
 N_HIDDEN_NODES = 500 # If none, no hidden layer
 NUM_CLASSES = 100
-NUM_EPOCHS = 20
+NUM_EPOCHS = 30
 BATCH_SIZE = 256 # effective batch size = batch_size * gpus * num_nodes
 LR = 0.001
 NUM_WORKERS= 16 # use os.cpu_count()
-TRANSFORMS = None
+TRANSFORMS = A.Compose([
+                A.HorizontalFlip(p=0.5),
+                A.VerticalFlip(p=0.5),
+                # A.OneOf([
+                #         A.RandomRotate90(p=0.5), 
+                #         A.Rotate(p=0.5)],
+                #     p=0.5),
+                A.ColorJitter (brightness=0.2, contrast=0.2, p=0.3),
+                A.ChannelShuffle(p=0.3),
+                A.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]), # Imagenet standard
+            ]) # Try one where the normalization happens before colorjitter and channelshuffle
 
 # %%
 class SorghumLitModel(pl.LightningModule):
@@ -40,19 +50,6 @@ class SorghumLitModel(pl.LightningModule):
                  pretrained=True, num_workers=4):
         super(SorghumLitModel, self).__init__()
         self.save_hyperparameters() # Need this later to load_from_checkpoint without providing the hyperparams again
-
-        # self.transforms = A.Compose([
-        #     A.HorizontalFlip(p=0.5),
-        #     A.VerticalFlip(p=0.5),
-        #     A.OneOf([
-        #             A.RandomRotate90(p=0.5), 
-        #             A.Rotate(p=0.5)],
-        #         p=0.5),
-        #     A.ColorJitter (brightness=0.2, contrast=0.2, p=0.3),
-        #     A.ChannelShuffle(p=0.3),
-        #     # A.Normalize(NORMAL_MEAN, NORMAL_STD),
-        #     ToTensorV2()
-        # ])
 
         self.transforms = transforms # Define transforms using albumentations here!
         self.batch_size = batch_size
