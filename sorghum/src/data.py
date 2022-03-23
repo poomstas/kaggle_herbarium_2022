@@ -22,18 +22,19 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 class SorghumDataset(Dataset):
     def __init__(self, csv_fullpath, dataset_root='/home/brian/dataset/sorghum/', 
                  transform=None, target_size=299, testset=False):
-        self.df                         = pd.read_csv(csv_fullpath)
         self.transform                  = transform
         self.target_size                = target_size
         self.testset                    = testset # Boolean
 
         if testset:
             dataset_root = os.path.join(dataset_root, 'test')
+            file_list = os.listdir(dataset_root)
+            file_fullpaths = [os.path.join(dataset_root, filename) for filename in file_list]
+            self.df = pd.DataFrame(file_fullpaths, columns=['image'])
         else:
+            self.df = pd.read_csv(csv_fullpath)
             dataset_root = os.path.join(dataset_root, 'train_images')
-
-        self.dataset_root               = dataset_root
-        self.df['image'] = [os.path.join(dataset_root, img_path) for img_path in self.df['image']]
+            self.df['image'] = [os.path.join(dataset_root, img_path) for img_path in self.df['image']]
 
         # Check if dataset exists. If not, then remove it from the dataframe.
         if not testset:
