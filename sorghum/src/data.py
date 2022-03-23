@@ -63,8 +63,6 @@ class SorghumDataset(Dataset):
         
         img = np.transpose(img, (2, 1, 0)) # Convert from [H, W, C] to [C, W, H] and convert it to float
         # TODO: Reduce computation by loading in the image in a format that doesn't require transposing
-        # print(type(img))
-        # img = torch.from_numpy(img).float() # Convert from np.array to torch float
         
         if self.testset:
             filename = self.df['image'][index].split('/')[-1]
