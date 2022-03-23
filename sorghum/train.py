@@ -36,11 +36,12 @@ NUM_WORKERS= 16 # use os.cpu_count()
 TRANSFORMS = A.Compose([
                 A.HorizontalFlip(p=0.5),
                 A.VerticalFlip(p=0.5),
-                A.ColorJitter (brightness=0.2, contrast=0.2, p=0.3),
-                A.ChannelShuffle(p=0.3),
+                # A.ColorJitter (brightness=0.2, contrast=0.2, p=0.3),
+                # A.ChannelShuffle(p=0.3),
                 # A.Normalize(mean = [0.485, 0.456, 0.406],
                 #             std =  [0.229, 0.224, 0.225]), # Imagenet standard
             ]) # Try one where the normalization happens before colorjitter and channelshuffle
+TB_NOTES = ''
 
 # %%
 class SorghumLitModel(pl.LightningModule):
@@ -165,6 +166,8 @@ class SorghumLitModel(pl.LightningModule):
 # %%
 if __name__=='__main__':
     now = datetime.now().strftime('%Y%m%d_%H%M%S')
+    if TB_NOTES != '':
+        now += '_' + TB_NOTES
 
     # fast_dev_run=True will run a single-batch through training and validation and test if the code works.
     logger = TensorBoardLogger('./tb_logs', name=now)
@@ -173,7 +176,7 @@ if __name__=='__main__':
     checkpoint_callback = ModelCheckpoint(dirpath='./tb_logs/{}/'.format(now), 
                                           monitor='val_loss', 
                                           filename='{epoch:02d}-{val_loss:.2f}',
-                                          save_top_k = 4)
+                                          save_top_k=3)
 
     trainer = Trainer(max_epochs            = NUM_EPOCHS, 
                       fast_dev_run          = False, 
