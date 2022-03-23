@@ -161,6 +161,7 @@ class SorghumLitModel(pl.LightningModule):
         with open(self.tests_result_csv_filename, 'a') as f:
             writer = csv.writer(f)
             if not self.csv_header_written:
+                self.csv_header_written = True
                 writer.writerow(['filename', 'cultivar'])
             for classification, filename in zip(out_indx, filenames):
                 writer.writerow([filename, CULTIVAR_LABELS[classification]])
