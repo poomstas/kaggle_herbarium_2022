@@ -9,10 +9,11 @@ from torch.utils.data import DataLoader, random_split
 import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
 
-import pytorch_lightning as pl
+import pytorch_lightning as pl # Works with plt.__version__ == '1.5.10'
 from pytorch_lightning import Trainer
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.plugins import DDPPlugin
 
 import albumentations as A
 from albumentations.pytorch.transforms import ToTensorV2
@@ -35,13 +36,10 @@ NUM_WORKERS= 16 # use os.cpu_count()
 TRANSFORMS = A.Compose([
                 A.HorizontalFlip(p=0.5),
                 A.VerticalFlip(p=0.5),
-                # A.OneOf([
-                #         A.RandomRotate90(p=0.5), 
-                #         A.Rotate(p=0.5)],
-                #     p=0.5),
                 A.ColorJitter (brightness=0.2, contrast=0.2, p=0.3),
                 A.ChannelShuffle(p=0.3),
-                A.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]), # Imagenet standard
+                # A.Normalize(mean = [0.485, 0.456, 0.406],
+                #             std =  [0.229, 0.224, 0.225]), # Imagenet standard
             ]) # Try one where the normalization happens before colorjitter and channelshuffle
 
 # %%
@@ -61,6 +59,7 @@ class SorghumLitModel(pl.LightningModule):
         self.n_hidden_nodes = n_hidden_nodes
 
         self.now = datetime.now().strftime('%Y%m%d_%H%M%S')
+        print('Run ID: ', self.now)
         self.tests_result_csv_filename = 'test_result_{}.csv'.format(self.now)
         self.csv_header_written = False
 
@@ -178,14 +177,15 @@ if __name__=='__main__':
 
     trainer = Trainer(max_epochs            = NUM_EPOCHS, 
                       fast_dev_run          = False, 
-                      gpus                  = 2, 
+                      gpus                  = -1, 
                       auto_lr_find          = True,
                       default_root_dir      = '../', 
                       precision             = 16,  # mixed precision training
                       logger                = logger,
                       log_every_n_steps     = 10,
-                      strategy              = 'ddp_spawn',
-                      callbacks             = [checkpoint_callback])
+                      accelerator           = 'ddp',
+                      callbacks             = [checkpoint_callback],
+                      plugins               = DDPPlugin(find_unused_parameters=False))
 
     model = SorghumLitModel(backbone        = 'xception', 
                             input_size      = INPUT_SIZE, 
