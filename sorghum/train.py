@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader, random_split
 import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
 
-import pytorch_lightning as pl # Works with plt.__version__ == '1.5.10'
+import pytorch_lightning as pl # Works with pl.__version__ == '1.5.10'
 from pytorch_lightning import Trainer
 from pytorch_lightning.loggers import TensorBoardLogger, WandbLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
@@ -42,7 +42,7 @@ TRANSFORMS = A.Compose([
                 # A.Normalize(mean = [0.485, 0.456, 0.406],
                 #             std =  [0.229, 0.224, 0.225]), # Imagenet standard
             ]) # Try one where the normalization happens before colorjitter and channelshuffle
-TB_NOTES = 'Added dropout layer'
+TB_NOTES = 'Added dropout layer, turned off horz vert flips'
 
 # %%
 class SorghumLitModel(pl.LightningModule):
