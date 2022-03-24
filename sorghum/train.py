@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 
 import pytorch_lightning as pl # Works with plt.__version__ == '1.5.10'
 from pytorch_lightning import Trainer
-from pytorch_lightning.loggers import TensorBoardLogger
+from pytorch_lightning.loggers import TensorBoardLogger, WandbLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.plugins import DDPPlugin
 
@@ -175,7 +175,8 @@ if __name__=='__main__':
         now += '_' + TB_NOTES
 
     # fast_dev_run=True will run a single-batch through training and validation and test if the code works.
-    logger = TensorBoardLogger('./tb_logs', name=now)
+    logger_tb = TensorBoardLogger('./tb_logs', name=now)
+    logger_wandb = WandbLogger(project='Sorghum', name=now)
 
     # Saves checkpoints at every epoch
     checkpoint_callback = ModelCheckpoint(dirpath='./tb_logs/{}/'.format(now), 
@@ -189,7 +190,7 @@ if __name__=='__main__':
                       auto_lr_find          = True,
                       default_root_dir      = '../', 
                       precision             = 16,  # mixed precision training
-                      logger                = logger,
+                      logger                = [logger_tb, logger_wandb],
                       log_every_n_steps     = 10,
                       accelerator           = 'ddp',
                       callbacks             = [checkpoint_callback],
