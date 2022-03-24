@@ -27,11 +27,12 @@ from pretrainedmodels import xception, densenet121, densenet201
 
 # %% Hyperparameters
 INPUT_SIZE = 299 # For xception
-N_HIDDEN_NODES = 500 # If none, no hidden layer
+N_HIDDEN_NODES = 500 # No hidden layer if None
+DROPOUT_RATE = 0.5 # No dropout if 0
 NUM_CLASSES = 100
 NUM_EPOCHS = 30
 BATCH_SIZE = 256 # effective batch size = batch_size * gpus * num_nodes
-LR = 0.001
+LR = 0.001 # Set up to be automatically adjusted (see Trainer parameter)
 NUM_WORKERS= 16 # use os.cpu_count()
 TRANSFORMS = A.Compose([
                 A.HorizontalFlip(p=0.5),
@@ -41,12 +42,12 @@ TRANSFORMS = A.Compose([
                 # A.Normalize(mean = [0.485, 0.456, 0.406],
                 #             std =  [0.229, 0.224, 0.225]), # Imagenet standard
             ]) # Try one where the normalization happens before colorjitter and channelshuffle
-TB_NOTES = ''
+TB_NOTES = 'Added dropout layer'
 
 # %%
 class SorghumLitModel(pl.LightningModule):
     def __init__(self, backbone, input_size, transforms, num_classes, batch_size, lr, n_hidden_nodes, 
-                 pretrained=True, num_workers=4):
+                 dropout_rate=0, pretrained=True, num_workers=4):
         super(SorghumLitModel, self).__init__()
         self.save_hyperparameters() # Need this later to load_from_checkpoint without providing the hyperparams again
 
@@ -58,6 +59,7 @@ class SorghumLitModel(pl.LightningModule):
         self.input_size = input_size
         self.backbone = backbone
         self.n_hidden_nodes = n_hidden_nodes
+        self.dropout = nn.Dropout(p=dropout_rate)
 
         self.now = datetime.now().strftime('%Y%m%d_%H%M%S')
         print('Run ID: ', self.now)
@@ -86,11 +88,14 @@ class SorghumLitModel(pl.LightningModule):
     def forward(self, x):
         if self.n_hidden_nodes is not None:
             out = self.model(x)
+            out = self.dropout(out)
             out = self.img_fc1(out)
             out = self.relu(out)
+            out = self.dropout(out)
             out = self.fc1(out) # No activation and no softmax at the end
         else:
             out = self.model(x)
+            out = self.dropout(out)
             out = self.img_fc1(out)
         return out
 
@@ -198,6 +203,7 @@ if __name__=='__main__':
                             lr              = LR, 
                             pretrained      = True, 
                             n_hidden_nodes  = N_HIDDEN_NODES, 
+                            dropout_rate    = DROPOUT_RATE,
                             num_workers     = NUM_WORKERS)
 
     trainer.fit(model)
