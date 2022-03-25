@@ -35,14 +35,13 @@ BATCH_SIZE = 256 # effective batch size = batch_size * gpus * num_nodes
 LR = 0.001 # Set up to be automatically adjusted (see Trainer parameter)
 NUM_WORKERS= 16 # use os.cpu_count()
 TRANSFORMS = A.Compose([
-                A.HorizontalFlip(p=0.5),
-                A.VerticalFlip(p=0.5),
+                A.HorizontalFlip(p=0.5), # Leaving this on improved performance (at 0.5)
+                A.VerticalFlip(p=0.5), # Leaving this on improved performance (at 0.5)
                 # A.ColorJitter (brightness=0.2, contrast=0.2, p=0.3),
                 # A.ChannelShuffle(p=0.3),
-                # A.Normalize(mean = [0.485, 0.456, 0.406],
-                #             std =  [0.229, 0.224, 0.225]), # Imagenet standard
+                # A.Normalize(mean = [0.485, 0.456, 0.406], std =  [0.229, 0.224, 0.225]), # Imagenet standard; Turning this on obliterated performance
             ]) # Try one where the normalization happens before colorjitter and channelshuffle
-TB_NOTES = 'Added dropout layer, turned off horz vert flips'
+TB_NOTES = 'Added dropout layer, turned on normalization, left on flips'
 
 # %%
 class SorghumLitModel(pl.LightningModule):
