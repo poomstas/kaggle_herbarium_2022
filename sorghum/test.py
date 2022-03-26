@@ -20,7 +20,19 @@ sys.path.append('./src/')
 from data import SorghumDataset
 
 # %%
-CHK_PATH = '/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220323_105943/epoch=18-val_loss=0.31.ckpt'
+# Tried
+# CHK_PATH = '/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220323_105943/epoch=18-val_loss=0.31.ckpt'
+# CHK_PATH = '/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220323_225103/epoch=16-val_loss=0.20.ckpt' # 0.507
+# CHK_PATH = '/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220324_094248/epoch=16-val_loss=0.11.ckpt' # 0.553
+# CHK_PATH = '/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220324_111631_Added dropout layer, turned off horz vert flips/epoch=23-val_loss=0.09.ckpt'
+# CHK_PATH = '/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220325_214512_Added dropout layer, turned on normalization, left on flips/epoch=23-val_loss=0.07.ckpt'
+
+# To Try
+CHK_PATH = ''
+# CHK_PATH = ''
+# CHK_PATH = ''
+# CHK_PATH = ''
+# CHK_PATH = ''
 
 # %%
 # Need to have caled self.save_hyperparameters() in model init for the below to work!
@@ -30,4 +42,4 @@ test_dataset = SorghumDataset(csv_fullpath='test.csv', testset=True)
 dl_test = DataLoader(dataset=test_dataset, shuffle=False, batch_size=512, num_workers=16)
 
 trainer = Trainer(gpus=1)
-results = trainer.test(model=model, test_dataloaders=dl_test, verbose=True)
+results = trainer.test(model=model, dataloaders=dl_test, verbose=True)
