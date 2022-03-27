@@ -1,0 +1,6 @@
+__pycache__
+lightning_logs
+submission_csvs
+tb_logs
+wandb
+.ipynb_checkpoints
