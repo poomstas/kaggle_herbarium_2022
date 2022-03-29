@@ -58,7 +58,7 @@ class SorghumLitModel(pl.LightningModule):
             self.relu = nn.ReLU()
             self.fc1 = nn.Linear(n_hidden_nodes, num_classes)
 
-        trainval_dataset = SorghumDataset(csv_fullpath='/home/brian/dataset/sorghum/train_cultivar_mapping.csv',
+        trainval_dataset = SorghumDataset(csv_fullpath='../../dataset/sorghum/train_cultivar_mapping.csv',
                                    transform=self.transforms,
                                    target_size=self.input_size,
                                    testset=False)
@@ -156,7 +156,7 @@ N_HIDDEN_NODES = 500 # No hidden layer if None
 DROPOUT_RATE = 0.5 # No dropout if 0
 NUM_CLASSES = 100 # Fixed (for this challenge)
 NUM_EPOCHS = 30
-BATCH_SIZE = 256 # effective batch size = batch_size * gpus * num_nodes. 256 on A100, 64 on GTX 1080Ti
+BATCH_SIZE = 64 # effective batch size = batch_size * gpus * num_nodes. 256 on A100, 64 on GTX 1080Ti
 LR = 0.001 # Set up to be automatically adjusted (see Trainer parameter)
 NUM_WORKERS= 16 # use os.cpu_count()
 TRANSFORMS = A.Compose([

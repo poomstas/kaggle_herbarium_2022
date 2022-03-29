@@ -20,7 +20,7 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 # %%
 class SorghumDataset(Dataset):
-    def __init__(self, csv_fullpath, dataset_root='/home/brian/dataset/sorghum/', 
+    def __init__(self, csv_fullpath, dataset_root='../../dataset/sorghum/', 
                  transform=None, target_size=299, testset=False):
         self.transform                  = transform
         self.target_size                = target_size
