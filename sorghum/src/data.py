@@ -36,8 +36,7 @@ class SorghumDataset(Dataset):
             dataset_root = os.path.join(dataset_root, 'train_images')
             self.df['image'] = [os.path.join(dataset_root, img_path) for img_path in self.df['image']]
 
-        # Check if dataset exists. If not, then remove it from the dataframe.
-        if not testset:
+            # Check if dataset exists. If not, then remove it from the dataframe.
             print('Original dataset length (CSV):', len(self.df))
             image_unavailable_indx = []
             for indx, row in self.df.iterrows(): 
@@ -46,7 +45,6 @@ class SorghumDataset(Dataset):
             self.df.drop(image_unavailable_indx, axis=0, inplace=True)
             self.df = self.df.reset_index()
             print('Validated dataset length (CSV):', len(self.df))
-            print('Number of Classes:', self.df)
     
     def __len__(self):
         return len(self.df)
