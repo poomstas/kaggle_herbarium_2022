@@ -32,8 +32,10 @@ weight = 1. / class_sample_count
 samples_weight = np.array([weight[t] for t in target]) # the prob. of each data point getting sampled by sampler
 
 samples_weight = torch.from_numpy(samples_weight)
-samples_weight = samples_weight.double()
-sampler = WeightedRandomSampler(samples_weight, len(samples_weight))
+samples_weight = samples_weight.double() # torch.Tensor of size [1000]
+sampler = WeightedRandomSampler(weights=samples_weight, 
+                                num_samples=len(samples_weight), 
+                                replacement=False)
 
 target = torch.from_numpy(target).long()
 train_dataset = torch.utils.data.TensorDataset(data, target)
