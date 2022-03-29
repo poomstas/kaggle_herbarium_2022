@@ -8,6 +8,7 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader, random_split
 import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
+import socket
 
 import pytorch_lightning as pl # Works with pl.__version__ == '1.5.10'
 from pytorch_lightning import Trainer
@@ -150,13 +151,15 @@ class SorghumLitModel(pl.LightningModule):
                 writer.writerow([filename, CULTIVAR_LABELS[classification]])
 
 # %% Hyperparameters
+host_name = socket.gethostname()
+
 INPUT_SIZE = 299 # For xception
 PRETRAINED = True
 N_HIDDEN_NODES = 500 # No hidden layer if None
 DROPOUT_RATE = 0.5 # No dropout if 0
 NUM_CLASSES = 100 # Fixed (for this challenge)
 NUM_EPOCHS = 30
-BATCH_SIZE = 64 # effective batch size = batch_size * gpus * num_nodes. 256 on A100, 64 on GTX 1080Ti
+BATCH_SIZE = 64 if host_name=='jupyter-brian' else 256 # effective batch size = batch_size * gpus * num_nodes. 256 on A100, 64 on GTX 1080Ti
 LR = 0.001 # Set up to be automatically adjusted (see Trainer parameter)
 NUM_WORKERS= 16 # use os.cpu_count()
 TRANSFORMS = A.Compose([
