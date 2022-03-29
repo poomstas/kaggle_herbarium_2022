@@ -25,24 +25,6 @@ from constants import CULTIVAR_LABELS, CULTIVAR_LABELS_ALT
 from pretrainedmodels import xception, densenet121, densenet201
 
 
-# %% Hyperparameters
-INPUT_SIZE = 299 # For xception
-N_HIDDEN_NODES = 500 # No hidden layer if None
-DROPOUT_RATE = 0.5 # No dropout if 0
-NUM_CLASSES = 100
-NUM_EPOCHS = 30
-BATCH_SIZE = 256 # effective batch size = batch_size * gpus * num_nodes
-LR = 0.001 # Set up to be automatically adjusted (see Trainer parameter)
-NUM_WORKERS= 16 # use os.cpu_count()
-TRANSFORMS = A.Compose([
-                A.HorizontalFlip(p=0.5), # Leaving this on improved performance (at 0.5)
-                A.VerticalFlip(p=0.5), # Leaving this on improved performance (at 0.5)
-                # A.ColorJitter (brightness=0.2, contrast=0.2, p=0.3),
-                # A.ChannelShuffle(p=0.3),
-                # A.Normalize(mean = [0.485, 0.456, 0.406], std =  [0.229, 0.224, 0.225]), # Imagenet standard; Turning this on obliterated performance
-            ]) # Try one where the normalization happens before colorjitter and channelshuffle
-TB_NOTES = 'Added dropout layer, turned on normalization, left on flips'
-
 # %%
 class SorghumLitModel(pl.LightningModule):
     def __init__(self, backbone, input_size, transforms, num_classes, batch_size, lr, n_hidden_nodes, 
@@ -167,6 +149,25 @@ class SorghumLitModel(pl.LightningModule):
             for classification, filename in zip(out_indx, filenames):
                 writer.writerow([filename, CULTIVAR_LABELS[classification]])
 
+# %% Hyperparameters
+INPUT_SIZE = 299 # For xception
+PRETRAINED = True
+N_HIDDEN_NODES = 500 # No hidden layer if None
+DROPOUT_RATE = 0.5 # No dropout if 0
+NUM_CLASSES = 100 # Fixed (for this challenge)
+NUM_EPOCHS = 30
+BATCH_SIZE = 256 # effective batch size = batch_size * gpus * num_nodes. 256 on A100, 64 on GTX 1080Ti
+LR = 0.001 # Set up to be automatically adjusted (see Trainer parameter)
+NUM_WORKERS= 16 # use os.cpu_count()
+TRANSFORMS = A.Compose([
+                A.HorizontalFlip(p=0.5), # Leaving this on improved performance (at 0.5)
+                A.VerticalFlip(p=0.5), # Leaving this on improved performance (at 0.5)
+                # A.ColorJitter (brightness=0.2, contrast=0.2, p=0.3),
+                # A.ChannelShuffle(p=0.3),
+                # A.Normalize(mean = [0.485, 0.456, 0.406], std =  [0.229, 0.224, 0.225]), # Imagenet standard; Turning this on obliterated performance
+            ]) # Try one where the normalization happens before colorjitter and channelshuffle
+TB_NOTES = 'Added dropout layer, turned on normalization, left on flips'
+
 # %%
 if __name__=='__main__':
     now = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -201,7 +202,7 @@ if __name__=='__main__':
                             num_classes     = NUM_CLASSES,
                             batch_size      = BATCH_SIZE, 
                             lr              = LR, 
-                            pretrained      = True, 
+                            pretrained      = PRETRAINED, 
                             n_hidden_nodes  = N_HIDDEN_NODES, 
                             dropout_rate    = DROPOUT_RATE,
                             num_workers     = NUM_WORKERS)
