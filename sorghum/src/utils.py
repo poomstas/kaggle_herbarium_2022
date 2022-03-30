@@ -9,13 +9,14 @@ from constants import CULTIVAR_LABELS_ALT
 from sklearn.model_selection import train_test_split
 
 # %%
-def stratified_split_train_val(df, target_variable_name, test_size=0.2):
+def stratified_split_train_val(df, target_variable_name, test_size=0.2, random_state=None):
     targets = df[target_variable_name].tolist()
     train_idx, val_idx = train_test_split(
                             np.arange(len(targets)),
                             test_size=test_size,
                             shuffle=True,
-                            stratify=targets)
+                            stratify=targets,
+                            random_state=random_state)
     df_train = df.iloc[train_idx]
     df_val = df.iloc[val_idx]
 
