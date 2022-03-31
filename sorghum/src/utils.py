@@ -8,7 +8,7 @@ from torch.utils.data.sampler import WeightedRandomSampler
 from sklearn.model_selection import train_test_split
 from data import SorghumDataset
 from torch.utils.data import DataLoader
-from constants import CULTIVAR_LABELS_ALT
+from constants import CULTIVAR_LABELS_STR2IND
 from torch.utils.data import Subset, DataLoader
 
 # %%

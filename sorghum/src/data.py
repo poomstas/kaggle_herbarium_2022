@@ -11,7 +11,7 @@ from torchvision import transforms
 import albumentations as A
 from albumentations.pytorch.transforms import ToTensorV2
 
-from constants import CULTIVAR_LABELS, CULTIVAR_LABELS_ALT
+from constants import CULTIVAR_LABELS_IND2STR, CULTIVAR_LABELS_STR2IND
 
 # Load the file even if the image file is truncated. 
 # See: https://discuss.pytorch.org/t/oserror-image-file-is-truncated-150-bytes-not-processed/64445
@@ -33,7 +33,7 @@ class SorghumDataset(Dataset):
             self.df = pd.DataFrame(file_fullpaths, columns=['image'])
         else:
             self.df = pd.read_csv(csv_fullpath)
-            self.df['cultivar_indx'] = [CULTIVAR_LABELS_ALT[cultivar_name] for cultivar_name in self.df['cultivar']] # e.g.) 'PI_329319' to 91
+            self.df['cultivar_indx'] = [CULTIVAR_LABELS_STR2IND[cultivar_name] for cultivar_name in self.df['cultivar']] # e.g.) 'PI_329319' to 91
             dataset_root = os.path.join(dataset_root, 'train_images')
             self.df['image'] = [os.path.join(dataset_root, img_path) for img_path in self.df['image']]
 
