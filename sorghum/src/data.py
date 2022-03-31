@@ -33,6 +33,7 @@ class SorghumDataset(Dataset):
             self.df = pd.DataFrame(file_fullpaths, columns=['image'])
         else:
             self.df = pd.read_csv(csv_fullpath)
+            self.df['cultivar_indx'] = [CULTIVAR_LABELS_ALT[cultivar_name] for cultivar_name in self.df['cultivar']] # e.g.) 'PI_329319' to 91
             dataset_root = os.path.join(dataset_root, 'train_images')
             self.df['image'] = [os.path.join(dataset_root, img_path) for img_path in self.df['image']]
 
@@ -66,8 +67,7 @@ class SorghumDataset(Dataset):
             filename = self.df['image'][index].split('/')[-1]
             return img, filename
         else:
-            cultivar = self.df['cultivar'][index]
-            cultivar_indx = CULTIVAR_LABELS_ALT[cultivar] # e.g.) 'PI_329319' to 91
+            cultivar_indx = self.df['cultivar_indx'][index]
             return img, cultivar_indx
 
 # %%
@@ -98,11 +98,11 @@ if __name__=='__main__':
                           batch_size=3,
                           num_workers=4)
 
-    for i, (img, cultivar) in enumerate(dl_train):
+    for i, (img, cultivar_indx) in enumerate(dl_train):
         if i > 10:
             break
         print(img.shape)
-        print(cultivar)
+        print(cultivar_indx)
 
     # Test Dataset
     print('='*90)
@@ -115,10 +115,11 @@ if __name__=='__main__':
                           batch_size=3,
                           num_workers=4)
 
-    for i, img in enumerate(dl_train):
+    for i, (img, filename) in enumerate(dl_train):
         if i > 10:
             break
         print(img.shape)
+        print(filename)
 
     # How to do splits correctly, for reference
     train_dataset, val_dataset = random_split(ds_train, [round(len(ds_train)*0.8), round(len(ds_train)*0.2)])
