@@ -177,7 +177,6 @@ if __name__=='__main__':
     if TB_NOTES != '':
         now += '_' + TB_NOTES
 
-    # fast_dev_run=True will run a single-batch through training and validation and test if the code works.
     logger_tb = TensorBoardLogger('./tb_logs', name=now)
     logger_wandb = WandbLogger(project='Sorghum', name=now, mode='disabled') # online or disabled
 
@@ -188,8 +187,8 @@ if __name__=='__main__':
                                           save_top_k=3)
 
     trainer = Trainer(max_epochs            = NUM_EPOCHS, 
-                      fast_dev_run          = False, 
-                      gpus                  = -1, 
+                      fast_dev_run          = True,     # Run a single-batch through train and val and see if the code works.
+                      gpus                  = 1,        # -1 to use all available GPUs
                       auto_lr_find          = True,
                       default_root_dir      = '../', 
                       precision             = 16,  # mixed precision training
