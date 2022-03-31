@@ -179,7 +179,7 @@ if __name__=='__main__':
 
     # fast_dev_run=True will run a single-batch through training and validation and test if the code works.
     logger_tb = TensorBoardLogger('./tb_logs', name=now)
-    logger_wandb = WandbLogger(project='Sorghum', name=now)
+    logger_wandb = WandbLogger(project='Sorghum', name=now, mode='disabled') # online or disabled
 
     # Saves checkpoints at every epoch
     checkpoint_callback = ModelCheckpoint(dirpath='./tb_logs/{}/'.format(now), 
