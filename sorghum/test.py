@@ -16,8 +16,8 @@ from albumentations.pytorch.transforms import ToTensorV2
 
 from train import SorghumLitModel
 
-sys.path.append('./src/')
-from data import SorghumDataset
+# sys.path.append('./src/')
+from src.data import SorghumDataset
 
 # %%
 # Tried
@@ -26,6 +26,7 @@ from data import SorghumDataset
 # CHK_PATH = '/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220324_094248/epoch=16-val_loss=0.11.ckpt' # 0.553
 # CHK_PATH = '/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220324_111631_Added dropout layer, turned off horz vert flips/epoch=23-val_loss=0.09.ckpt'
 # CHK_PATH = '/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220325_214512_Added dropout layer, turned on normalization, left on flips/epoch=23-val_loss=0.07.ckpt'
+# CHK_PATH = '/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220329_024615_Added dropout layer, turned on normalization, left on flips/epoch=25-val_loss=0.08.ckpt' # 0.575
 
 # To Try
 CHK_PATH = ''
