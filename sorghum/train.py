@@ -21,7 +21,7 @@ from albumentations.pytorch.transforms import ToTensorV2
 
 sys.path.append('./src/')
 from data import SorghumDataset
-from constants import CULTIVAR_LABELS, CULTIVAR_LABELS_ALT
+from constants import CULTIVAR_LABELS_IND2STR, CULTIVAR_LABELS_STR2IND
 
 from pretrainedmodels import xception, densenet121, densenet201
 
@@ -148,7 +148,7 @@ class SorghumLitModel(pl.LightningModule):
                 self.csv_header_written = True
                 writer.writerow(['filename', 'cultivar'])
             for classification, filename in zip(out_indx, filenames):
-                writer.writerow([filename, CULTIVAR_LABELS[classification]])
+                writer.writerow([filename, CULTIVAR_LABELS_IND2STR[classification]])
 
 # %% Hyperparameters
 host_name = socket.gethostname()
@@ -187,8 +187,8 @@ if __name__=='__main__':
                                           save_top_k=3)
 
     trainer = Trainer(max_epochs            = NUM_EPOCHS, 
-                      fast_dev_run          = True,     # Run a single-batch through train and val and see if the code works.
-                      gpus                  = 1,        # -1 to use all available GPUs
+                      fast_dev_run          = False,     # Run a single-batch through train and val and see if the code works.
+                      gpus                  = -1,        # -1 to use all available GPUs
                       auto_lr_find          = True,
                       default_root_dir      = '../', 
                       precision             = 16,  # mixed precision training
