@@ -29,7 +29,7 @@ from src.data import SorghumDataset
 # CHK_PATH = '/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220329_024615_Added dropout layer, turned on normalization, left on flips/epoch=25-val_loss=0.08.ckpt' # 0.575
 
 # To Try
-CHK_PATH = ''
+CHK_PATH = '/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220401_214554_Added dropout layer, turned on normalization, left on flips/epoch=15-val_loss=0.27.ckpt'
 # CHK_PATH = ''
 # CHK_PATH = ''
 # CHK_PATH = ''
@@ -40,7 +40,7 @@ CHK_PATH = ''
 model = SorghumLitModel.load_from_checkpoint(checkpoint_path=CHK_PATH) 
 
 test_dataset = SorghumDataset(csv_fullpath='test.csv', testset=True)
-dl_test = DataLoader(dataset=test_dataset, shuffle=False, batch_size=512, num_workers=16)
+dl_test = DataLoader(dataset=test_dataset, shuffle=False, batch_size=512, num_workers=8)
 
-trainer = Trainer(gpus=1)
+trainer = Trainer(gpus=[1])
 results = trainer.test(model=model, dataloaders=dl_test, verbose=True)

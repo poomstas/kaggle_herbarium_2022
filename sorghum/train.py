@@ -6,9 +6,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader, random_split
+from sklearn.model_selection import train_test_split
 import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
 import socket
+import pandas as pd
 
 import pytorch_lightning as pl # Works with pl.__version__ == '1.5.10'
 from pytorch_lightning import Trainer
@@ -21,7 +23,8 @@ from albumentations.pytorch.transforms import ToTensorV2
 
 sys.path.append('./src/')
 from data import SorghumDataset
-from constants import CULTIVAR_LABELS, CULTIVAR_LABELS_ALT
+from constants import CULTIVAR_LABELS_IND2STR, CULTIVAR_LABELS_STR2IND
+from utils import get_dataloaders_train_val
 
 from pretrainedmodels import xception, densenet121, densenet201
 
@@ -59,13 +62,18 @@ class SorghumLitModel(pl.LightningModule):
             self.relu = nn.ReLU()
             self.fc1 = nn.Linear(n_hidden_nodes, num_classes)
 
-        trainval_dataset = SorghumDataset(csv_fullpath='../../dataset/sorghum/train_cultivar_mapping.csv',
-                                   transform=self.transforms,
-                                   target_size=self.input_size,
-                                   testset=False)
 
-        self.train_dataset, self.val_dataset = \
-            random_split(trainval_dataset, [round(len(trainval_dataset)*0.8), round(len(trainval_dataset)*0.2)])
+        self.df = pd.read_csv('../../dataset/sorghum/train_cultivar_mapping.csv')
+
+        self.train_loader, self.val_loader, self.train_dataset, self.val_dataset = \
+            get_dataloaders_train_val(csv_fullpath          = '../../dataset/sorghum/train_cultivar_mapping.csv', 
+                                      target_variable_name  = 'cultivar_indx', 
+                                      transforms            = self.transforms, 
+                                      target_size           = self.input_size, 
+                                      batch_size            = self.batch_size, 
+                                      num_workers           = self.num_workers,
+                                      val_size              = 0.2, 
+                                      random_state          = None)
 
     def forward(self, x):
         if self.n_hidden_nodes is not None:
@@ -89,20 +97,20 @@ class SorghumLitModel(pl.LightningModule):
         # return [optimizer], [lr_scheduler]
 
     def train_dataloader(self):
-        train_loader = DataLoader(dataset       = self.train_dataset,
-                                  batch_size    = self.batch_size, 
-                                  shuffle       = True, 
-                                  num_workers   = self.num_workers,
-                                  persistent_workers = True)
-        return train_loader
+        # train_loader = DataLoader(dataset       = self.train_dataset,
+        #                           batch_size    = self.batch_size, 
+        #                           shuffle       = True, 
+        #                           num_workers   = self.num_workers,
+        #                           persistent_workers = True)
+        return self.train_loader
 
     def val_dataloader(self):
-        val_loader = DataLoader(dataset         = self.val_dataset, 
-                                batch_size      = self.batch_size, 
-                                shuffle         = False, 
-                                num_workers     = self.num_workers,
-                                persistent_workers = True)
-        return val_loader
+        # val_loader = DataLoader(dataset         = self.val_dataset, 
+        #                         batch_size      = self.batch_size, 
+        #                         shuffle         = False, 
+        #                         num_workers     = self.num_workers,
+        #                         persistent_workers = True)
+        return self.val_loader
 
     def training_step(self, batch, batch_idx):
         images, cultivar_indx = batch
@@ -148,7 +156,7 @@ class SorghumLitModel(pl.LightningModule):
                 self.csv_header_written = True
                 writer.writerow(['filename', 'cultivar'])
             for classification, filename in zip(out_indx, filenames):
-                writer.writerow([filename, CULTIVAR_LABELS[classification]])
+                writer.writerow([filename, CULTIVAR_LABELS_IND2STR[classification]])
 
 # %% Hyperparameters
 host_name = socket.gethostname()
@@ -169,7 +177,7 @@ TRANSFORMS = A.Compose([
                 # A.ChannelShuffle(p=0.3),
                 # A.Normalize(mean = [0.485, 0.456, 0.406], std =  [0.229, 0.224, 0.225]), # Imagenet standard; Turning this on obliterated performance
             ]) # Try one where the normalization happens before colorjitter and channelshuffle
-TB_NOTES = 'Added dropout layer, turned on normalization, left on flips'
+TB_NOTES = 'Stratified_Sampling_TrainVal'
 
 # %%
 if __name__=='__main__':
@@ -187,8 +195,8 @@ if __name__=='__main__':
                                           save_top_k=3)
 
     trainer = Trainer(max_epochs            = NUM_EPOCHS, 
-                      fast_dev_run          = True,     # Run a single-batch through train and val and see if the code works.
-                      gpus                  = 1,        # -1 to use all available GPUs
+                      fast_dev_run          = False,     # Run a single-batch through train and val and see if the code works.
+                      gpus                  = 1,        # -1 to use all available GPUs, [0, 1, 2] to specify GPU index
                       auto_lr_find          = True,
                       default_root_dir      = '../', 
                       precision             = 16,  # mixed precision training
@@ -196,7 +204,8 @@ if __name__=='__main__':
                       log_every_n_steps     = 10,
                       accelerator           = 'ddp',
                       callbacks             = [checkpoint_callback],
-                      plugins               = DDPPlugin(find_unused_parameters=False))
+                      plugins               = DDPPlugin(find_unused_parameters=False),
+                      replace_sampler_ddp   = False)
 
     model = SorghumLitModel(backbone        = 'xception', 
                             input_size      = INPUT_SIZE, 
