@@ -23,9 +23,6 @@ sys.path.append('./src/')
 from data import SorghumDataset
 from constants import CULTIVAR_LABELS_IND2STR, CULTIVAR_LABELS_STR2IND
 
-from pretrainedmodels import xception, densenet121, densenet201
-
-
 # %%
 class SorghumLitModel(pl.LightningModule):
     def __init__(self, backbone, input_size, transforms, num_classes, batch_size, lr, n_hidden_nodes, 
@@ -49,6 +46,7 @@ class SorghumLitModel(pl.LightningModule):
         self.csv_header_written = False
 
         if self.backbone == 'xception': # INPUT_SIZE = 3 x 299 x 299
+            from pretrainedmodels import xception # densenet121, densenet201
             self.model = xception(num_classes=1000, pretrained='imagenet' if pretrained else False)
             self.model.last_linear = nn.Identity() # Outputs 2048
             n_backbone_out = 2048
