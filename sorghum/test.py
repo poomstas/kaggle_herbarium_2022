@@ -16,12 +16,17 @@ from src.constants import BACKBONE_IMG_SIZE
 # CHK_PATH = '/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220325_214512_Added dropout layer, turned on normalization, left on flips/epoch=23-val_loss=0.07.ckpt'
 # CHK_PATH = '/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220329_024615_Added dropout layer, turned on normalization, left on flips/epoch=25-val_loss=0.08.ckpt' # 0.575
 # CHK_PATH = '/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220402_103938_Dropout, RandomResizedCrop, Flips, UnNormalized/epoch=28-val_loss=0.25.ckpt'
+# CHK_PATH = "/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220402_135655_SH1R0's transforms, without normalization and ISONoise/epoch=28-val_loss=2.27.ckpt"
+# CHK_PATH = "/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220402_195622_SH1R0's transforms, without normalization and ISONoise/epoch=23-val_loss=0.38.ckpt"
 
 # To Try
-# CHK_PATH = ''
-# CHK_PATH = ''
-# CHK_PATH = ''
-# CHK_PATH = ''
+CHK_PATH = ""
+# CHK_PATH = ""
+# CHK_PATH = ""
+# CHK_PATH = ""
+# CHK_PATH = ""
+# CHK_PATH = ""
+# CHK_PATH = ""
 
 # %%
 # Need to have caled self.save_hyperparameters() in model init for the below to work!
