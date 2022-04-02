@@ -39,7 +39,16 @@ CHK_PATH = ''
 # Need to have caled self.save_hyperparameters() in model init for the below to work!
 model = SorghumLitModel.load_from_checkpoint(checkpoint_path=CHK_PATH) 
 
-test_dataset = SorghumDataset(csv_fullpath='test.csv', testset=True)
+transform = A.Compose([
+                # A.HorizontalFlip(p=0.5), # Leaving this on improved performance (at 0.5)
+                # A.VerticalFlip(p=0.5), # Leaving this on improved performance (at 0.5)
+                # A.ColorJitter (brightness=0.2, contrast=0.2, p=0.3),
+                # A.ChannelShuffle(p=0.3),
+                A.Normalize(mean = [0.485, 0.456, 0.406], std =  [0.229, 0.224, 0.225]), # Imagenet standard; Turning this on obliterated performance
+                ToTensorV2(), # np.array HWC image -> torch.Tensor CHW
+            ]) # Try one where the normalization happens before colorjitter and channelshuffle
+
+test_dataset = SorghumDataset(csv_fullpath='test.csv', testset=True, target_size=299, transform=transform) # xception: 299, vit: 384
 dl_test = DataLoader(dataset=test_dataset, shuffle=False, batch_size=512, num_workers=16)
 
 trainer = Trainer(gpus=1)

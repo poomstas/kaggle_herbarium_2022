@@ -60,9 +60,6 @@ class SorghumDataset(Dataset):
         if self.transform is not None:
             img = self.transform(image=img)["image"]
         
-        img = np.transpose(img, (2, 1, 0)) # Convert from [H, W, C] to [C, W, H] and convert it to float
-        # TODO: Reduce computation by loading in the image in a format that doesn't require transposing
-        
         if self.testset:
             filename = self.df['image'][index].split('/')[-1]
             return img, filename
@@ -84,7 +81,7 @@ if __name__=='__main__':
         A.ColorJitter (brightness=0.2, contrast=0.2, p=0.3),
         A.ChannelShuffle(p=0.3),
         A.Normalize(IMAGENET_NORMAL_MEAN, IMAGENET_NORMAL_STD),
-        ToTensorV2(),
+        ToTensorV2(), # np.array HWC image -> torch.Tensor CHW
     ])
 
     # Train Dataset

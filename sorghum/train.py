@@ -166,7 +166,8 @@ TRANSFORMS = A.Compose([
                 # A.ColorJitter (brightness=0.2, contrast=0.2, p=0.3),
                 # A.ChannelShuffle(p=0.3),
                 # A.Normalize(IMAGENET_NORMAL_MEAN, IMAGENET_NORMAL_STD), # Turning this on obliterated performance
-            ]) # Try one where the normalization happens before colorjitter and channelshuffle
+                ToTensorV2(), # np.array HWC image -> torch.Tensor CHW
+            ]) # Try one where the normalization happens before colorjitter and channelshuffle -> not a good idea
 TB_NOTES = 'Added dropout layer, turned on normalization, left on flips'
 
 # %%
