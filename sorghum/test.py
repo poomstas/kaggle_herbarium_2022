@@ -26,10 +26,10 @@ from src.constants import CULTIVAR_LABELS_IND2STR, CULTIVAR_LABELS_STR2IND, IMAG
 # CHK_PATH = '/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220324_094248/epoch=16-val_loss=0.11.ckpt' # 0.553
 # CHK_PATH = '/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220324_111631_Added dropout layer, turned off horz vert flips/epoch=23-val_loss=0.09.ckpt'
 # CHK_PATH = '/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220325_214512_Added dropout layer, turned on normalization, left on flips/epoch=23-val_loss=0.07.ckpt'
-CHK_PATH = '/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220329_024615_Added dropout layer, turned on normalization, left on flips/epoch=25-val_loss=0.08.ckpt' # 0.575
+# CHK_PATH = '/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220329_024615_Added dropout layer, turned on normalization, left on flips/epoch=25-val_loss=0.08.ckpt' # 0.575
 
 # To Try
-# CHK_PATH = ''
+CHK_PATH = '/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220402_103938_Dropout, RandomResizedCrop, Flips, UnNormalized/epoch=28-val_loss=0.25.ckpt'
 # CHK_PATH = ''
 # CHK_PATH = ''
 # CHK_PATH = ''
@@ -45,7 +45,7 @@ transform = A.Compose([
                 # A.VerticalFlip(p=0.5), # Leaving this on improved performance (at 0.5)
                 # A.ColorJitter (brightness=0.2, contrast=0.2, p=0.3),
                 # A.ChannelShuffle(p=0.3),
-                A.Normalize(IMAGENET_NORMAL_MEAN, IMAGENET_NORMAL_STD),
+                # A.Normalize(IMAGENET_NORMAL_MEAN, IMAGENET_NORMAL_STD),
                 ToTensorV2(), # np.array HWC image -> torch.Tensor CHW
             ]) # Try one where the normalization happens before colorjitter and channelshuffle
 

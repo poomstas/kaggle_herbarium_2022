@@ -1,5 +1,4 @@
 # %%
-import sys
 import csv
 from datetime import datetime
 import torch
@@ -19,9 +18,8 @@ from pytorch_lightning.plugins import DDPPlugin
 import albumentations as A
 from albumentations.pytorch.transforms import ToTensorV2
 
-sys.path.append('./src/')
-from data import SorghumDataset
-from constants import CULTIVAR_LABELS_IND2STR, CULTIVAR_LABELS_STR2IND, IMAGENET_NORMAL_MEAN, IMAGENET_NORMAL_STD, BACKBONE_IMG_SIZE
+from src.data import SorghumDataset
+from src.constants import CULTIVAR_LABELS_IND2STR, CULTIVAR_LABELS_STR2IND, IMAGENET_NORMAL_MEAN, IMAGENET_NORMAL_STD, BACKBONE_IMG_SIZE
 
 # %%
 class SorghumLitModel(pl.LightningModule):
@@ -163,15 +161,16 @@ if BACKBONE == 'xception':
     BATCH_SIZE = 64 if host_name=='jupyter-brian' else 256 # effective batch size = batch_size * gpus * num_nodes. 256 on A100, 64 on GTX 1080Ti
 
 TRANSFORMS = A.Compose([
-                A.RandomResizedCrop(height=BACKBONE_IMG_SIZE[BACKBONE], width=BACKBONE_IMG_SIZE[BACKBONE]),
+                A.RandomResizedCrop(height=BACKBONE_IMG_SIZE[BACKBONE], width=BACKBONE_IMG_SIZE[BACKBONE]), # Improved final score by 0.023 (0.575->0.598)
+                # A.Resize(height=BACKBONE_IMG_SIZE[BACKBONE], width=BACKBONE_IMG_SIZE[BACKBONE]),
                 A.HorizontalFlip(p=0.5), # Leaving this on improved performance (at 0.5)
                 A.VerticalFlip(p=0.5), # Leaving this on improved performance (at 0.5)
                 # A.ColorJitter (brightness=0.2, contrast=0.2, p=0.3),
                 # A.ChannelShuffle(p=0.3),
-                # A.Normalize(IMAGENET_NORMAL_MEAN, IMAGENET_NORMAL_STD), # Turning this on obliterated performance
+                # A.Normalize(IMAGENET_NORMAL_MEAN, IMAGENET_NORMAL_STD), # Turning this on obliterated performance (only for validation metrics)
                 ToTensorV2(), # np.array HWC image -> torch.Tensor CHW
             ]) # Try one where the normalization happens before colorjitter and channelshuffle -> not a good idea
-TB_NOTES = 'Added dropout layer, turned on normalization, left on flips'
+TB_NOTES = 'Dropout, RandomResizedCrop, Flips, UnNormalized'
 
 # %%
 if __name__=='__main__':
@@ -180,7 +179,7 @@ if __name__=='__main__':
         now += '_' + TB_NOTES
 
     logger_tb = TensorBoardLogger('./tb_logs', name=now)
-    logger_wandb = WandbLogger(project='Sorghum', name=now, mode='disabled') # online or disabled
+    logger_wandb = WandbLogger(project='Sorghum', name=now, mode='online') # online or disabled
 
     # Saves checkpoints at every epoch
     checkpoint_callback = ModelCheckpoint(dirpath='./tb_logs/{}/'.format(now), 
