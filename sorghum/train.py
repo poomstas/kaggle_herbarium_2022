@@ -21,7 +21,7 @@ from albumentations.pytorch.transforms import ToTensorV2
 
 sys.path.append('./src/')
 from data import SorghumDataset
-from constants import CULTIVAR_LABELS_IND2STR, CULTIVAR_LABELS_STR2IND
+from constants import CULTIVAR_LABELS_IND2STR, CULTIVAR_LABELS_STR2IND, IMAGENET_NORMAL_MEAN, IMAGENET_NORMAL_STD
 
 # %%
 class SorghumLitModel(pl.LightningModule):
@@ -165,7 +165,7 @@ TRANSFORMS = A.Compose([
                 A.VerticalFlip(p=0.5), # Leaving this on improved performance (at 0.5)
                 # A.ColorJitter (brightness=0.2, contrast=0.2, p=0.3),
                 # A.ChannelShuffle(p=0.3),
-                # A.Normalize(mean = [0.485, 0.456, 0.406], std =  [0.229, 0.224, 0.225]), # Imagenet standard; Turning this on obliterated performance
+                # A.Normalize(IMAGENET_NORMAL_MEAN, IMAGENET_NORMAL_STD), # Turning this on obliterated performance
             ]) # Try one where the normalization happens before colorjitter and channelshuffle
 TB_NOTES = 'Added dropout layer, turned on normalization, left on flips'
 

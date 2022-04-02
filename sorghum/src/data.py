@@ -11,7 +11,7 @@ from torchvision import transforms
 import albumentations as A
 from albumentations.pytorch.transforms import ToTensorV2
 
-from constants import CULTIVAR_LABELS_IND2STR, CULTIVAR_LABELS_STR2IND
+from constants import CULTIVAR_LABELS_IND2STR, CULTIVAR_LABELS_STR2IND, IMAGENET_NORMAL_MEAN, IMAGENET_NORMAL_STD
 
 # Load the file even if the image file is truncated. 
 # See: https://discuss.pytorch.org/t/oserror-image-file-is-truncated-150-bytes-not-processed/64445
@@ -73,9 +73,7 @@ class SorghumDataset(Dataset):
 # %%
 if __name__=='__main__':
     ''' Test to see if the Dataset and DataLoader objects are working correctly. '''
-    NORMAL_MEAN = [0.5, 0.5, 0.5]
-    NORMAL_STD = [0.5, 0.5, 0.5]
-    
+
     transforms = A.Compose([
         A.HorizontalFlip(p=0.5),
         A.VerticalFlip(p=0.5),
@@ -85,8 +83,8 @@ if __name__=='__main__':
             p=0.5),
         A.ColorJitter (brightness=0.2, contrast=0.2, p=0.3),
         A.ChannelShuffle(p=0.3),
-        A.Normalize(NORMAL_MEAN, NORMAL_STD),
-        ToTensorV2()
+        A.Normalize(IMAGENET_NORMAL_MEAN, IMAGENET_NORMAL_STD),
+        ToTensorV2(),
     ])
 
     # Train Dataset
