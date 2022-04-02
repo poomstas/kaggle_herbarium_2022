@@ -21,9 +21,8 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 # %%
 class SorghumDataset(Dataset):
     def __init__(self, csv_fullpath, dataset_root='/home/brian/dataset/sorghum/', 
-                 transform=None, target_size=299, testset=False):
+                 transform=None, testset=False):
         self.transform                  = transform
-        self.target_size                = target_size
         self.testset                    = testset # Boolean
 
         if testset:
@@ -54,9 +53,6 @@ class SorghumDataset(Dataset):
         img_fullpath = self.df['image'][index]
         img = mpimg.imread(img_fullpath) # Reads in [H, W, C]
 
-        if (self.target_size, self.target_size) != img.shape[:2]:
-            img = cv2.resize(img, (self.target_size, self.target_size))
-
         if self.transform is not None:
             img = self.transform(image=img)["image"]
         
@@ -72,6 +68,7 @@ if __name__=='__main__':
     ''' Test to see if the Dataset and DataLoader objects are working correctly. '''
 
     transforms = A.Compose([
+        A.Resize(height=299, width=299),
         A.HorizontalFlip(p=0.5),
         A.VerticalFlip(p=0.5),
         A.OneOf([

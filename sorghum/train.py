@@ -21,11 +21,11 @@ from albumentations.pytorch.transforms import ToTensorV2
 
 sys.path.append('./src/')
 from data import SorghumDataset
-from constants import CULTIVAR_LABELS_IND2STR, CULTIVAR_LABELS_STR2IND, IMAGENET_NORMAL_MEAN, IMAGENET_NORMAL_STD
+from constants import CULTIVAR_LABELS_IND2STR, CULTIVAR_LABELS_STR2IND, IMAGENET_NORMAL_MEAN, IMAGENET_NORMAL_STD, BACKBONE_IMG_SIZE
 
 # %%
 class SorghumLitModel(pl.LightningModule):
-    def __init__(self, backbone, input_size, transforms, num_classes, batch_size, lr, n_hidden_nodes, 
+    def __init__(self, backbone, transforms, num_classes, batch_size, lr, n_hidden_nodes, 
                  dropout_rate=0, pretrained=True, num_workers=4):
         super(SorghumLitModel, self).__init__()
         self.save_hyperparameters() # Need this later to load_from_checkpoint without providing the hyperparams again
@@ -35,7 +35,6 @@ class SorghumLitModel(pl.LightningModule):
         self.lr = lr
         self.num_workers= num_workers
 
-        self.input_size = input_size
         self.backbone = backbone
         self.n_hidden_nodes = n_hidden_nodes
         self.dropout = nn.Dropout(p=dropout_rate)
@@ -50,6 +49,8 @@ class SorghumLitModel(pl.LightningModule):
             self.model = xception(num_classes=1000, pretrained='imagenet' if pretrained else False)
             self.model.last_linear = nn.Identity() # Outputs 2048
             n_backbone_out = 2048
+            self.target_size=299
+
         if self.n_hidden_nodes is None:
             self.img_fc1 = nn.Linear(n_backbone_out, num_classes)
         else:
@@ -59,7 +60,6 @@ class SorghumLitModel(pl.LightningModule):
 
         trainval_dataset = SorghumDataset(csv_fullpath='../../dataset/sorghum/train_cultivar_mapping.csv',
                                    transform=self.transforms,
-                                   target_size=self.input_size,
                                    testset=False)
 
         self.train_dataset, self.val_dataset = \
@@ -149,18 +149,21 @@ class SorghumLitModel(pl.LightningModule):
                 writer.writerow([filename, CULTIVAR_LABELS_IND2STR[classification]])
 
 # %% Hyperparameters
-host_name = socket.gethostname()
-
-INPUT_SIZE = 299 # For xception
 PRETRAINED = True
 N_HIDDEN_NODES = 500 # No hidden layer if None
 DROPOUT_RATE = 0.5 # No dropout if 0
 NUM_CLASSES = 100 # Fixed (for this challenge)
 NUM_EPOCHS = 30
-BATCH_SIZE = 64 if host_name=='jupyter-brian' else 256 # effective batch size = batch_size * gpus * num_nodes. 256 on A100, 64 on GTX 1080Ti
 LR = 0.001 # Set up to be automatically adjusted (see Trainer parameter)
 NUM_WORKERS= 16 # use os.cpu_count()
+BACKBONE = 'xception'
+
+host_name = socket.gethostname()
+if BACKBONE == 'xception':
+    BATCH_SIZE = 64 if host_name=='jupyter-brian' else 256 # effective batch size = batch_size * gpus * num_nodes. 256 on A100, 64 on GTX 1080Ti
+
 TRANSFORMS = A.Compose([
+                A.RandomResizedCrop(height=BACKBONE_IMG_SIZE[BACKBONE], width=BACKBONE_IMG_SIZE[BACKBONE]),
                 A.HorizontalFlip(p=0.5), # Leaving this on improved performance (at 0.5)
                 A.VerticalFlip(p=0.5), # Leaving this on improved performance (at 0.5)
                 # A.ColorJitter (brightness=0.2, contrast=0.2, p=0.3),
@@ -197,8 +200,7 @@ if __name__=='__main__':
                       callbacks             = [checkpoint_callback],
                       plugins               = DDPPlugin(find_unused_parameters=False))
 
-    model = SorghumLitModel(backbone        = 'xception', 
-                            input_size      = INPUT_SIZE, 
+    model = SorghumLitModel(backbone        = BACKBONE, 
                             transforms      = TRANSFORMS, 
                             num_classes     = NUM_CLASSES,
                             batch_size      = BATCH_SIZE, 
