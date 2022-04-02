@@ -12,7 +12,7 @@ import socket
 import pytorch_lightning as pl # Works with pl.__version__ == '1.5.10'
 from pytorch_lightning import Trainer
 from pytorch_lightning.loggers import TensorBoardLogger, WandbLogger
-from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 from pytorch_lightning.plugins import DDPPlugin
 
 import albumentations as A
@@ -182,21 +182,28 @@ if __name__=='__main__':
     logger_wandb = WandbLogger(project='Sorghum', name=now, mode='online') # online or disabled
 
     # Saves checkpoints at every epoch
-    checkpoint_callback = ModelCheckpoint(dirpath='./tb_logs/{}/'.format(now), 
-                                          monitor='val_loss', 
-                                          filename='{epoch:02d}-{val_loss:.2f}',
-                                          save_top_k=3)
+    cb_checkpoint = ModelCheckpoint(dirpath='./tb_logs/{}/'.format(now), 
+                                    monitor='val_loss', 
+                                    filename='{epoch:02d}-{val_loss:.2f}',
+                                    save_top_k=3)
+
+    cb_earlystopping = EarlyStopping(monitor = 'val_loss',
+                                     patience = 7,
+                                     strict = True, # whether to crash the training if monitor is not found in the val metrics
+                                     verbose = True,
+                                     mode = 'min')
 
     trainer = Trainer(max_epochs            = NUM_EPOCHS, 
-                      fast_dev_run          = False,     # Run a single-batch through train and val and see if the code works.
+                      fast_dev_run          = False,     # Run a single-batch through train and val and see if the code works
                       gpus                  = -1,        # -1 to use all available GPUs, [0, 1, 2] to specify GPUs by index
+                      auto_select_gpus      = True,
                       auto_lr_find          = True,
                       default_root_dir      = '../', 
                       precision             = 16,  # mixed precision training
                       logger                = [logger_tb, logger_wandb],
                       log_every_n_steps     = 10,
                       accelerator           = 'ddp',
-                      callbacks             = [checkpoint_callback],
+                      callbacks             = [cb_checkpoint, cb_earlystopping],
                       plugins               = DDPPlugin(find_unused_parameters=False))
 
     model = SorghumLitModel(backbone        = BACKBONE, 
