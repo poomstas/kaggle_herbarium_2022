@@ -186,7 +186,7 @@ if __name__=='__main__':
 
     trainer = Trainer(max_epochs            = NUM_EPOCHS, 
                       fast_dev_run          = False,     # Run a single-batch through train and val and see if the code works.
-                      gpus                  = -1,        # -1 to use all available GPUs
+                      gpus                  = -1,        # -1 to use all available GPUs, [0, 1, 2] to specify GPUs by index
                       auto_lr_find          = True,
                       default_root_dir      = '../', 
                       precision             = 16,  # mixed precision training
