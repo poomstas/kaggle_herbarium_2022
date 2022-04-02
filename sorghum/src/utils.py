@@ -1,14 +1,12 @@
 # %%
-import os
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 import torch
 from torch.utils.data.sampler import WeightedRandomSampler
 from sklearn.model_selection import train_test_split
-from data import SorghumDataset
+from src.data import SorghumDataset
+from src.constants import CULTIVAR_LABELS_STR2IND
 from torch.utils.data import DataLoader
-from constants import CULTIVAR_LABELS_STR2IND
 from torch.utils.data import Subset, DataLoader
 
 # %%
@@ -30,6 +28,19 @@ from torch.utils.data import Subset, DataLoader
 #     return df_train, df_val, train_idx, val_idx
 
 # %%
+def balance_val_split_idx(csv_fullpath, target_variable_name, test_size=0.2, random_state=None):
+    # targets = np.array(dataset.targets)
+    df = pd.read_csv(csv_fullpath)
+    targets = np.array(df[target_variable_name])
+    train_idx, val_idx = train_test_split(
+                            np.arange(len(targets)),
+                            test_size=test_size,
+                            shuffle=True,
+                            stratify=targets,
+                            random_state=random_state)
+    return train_idx, val_idx
+
+# %%
 def balance_val_split(dataset, target_variable_name, test_size=0.2, random_state=None):
     # targets = np.array(dataset.targets)
     targets = np.array(dataset.df[target_variable_name])
@@ -42,23 +53,6 @@ def balance_val_split(dataset, target_variable_name, test_size=0.2, random_state
     train_dataset = Subset(dataset, indices=train_idx)
     val_dataset = Subset(dataset, indices=val_idx)
     return train_dataset, val_dataset
-
-# %%
-'''
-class Subset(Dataset[T_co]):
-    dataset: Dataset[T_co]
-    indices: Sequence[int]
-
-    def __init__(self, dataset: Dataset[T_co], indices: Sequence[int]) -> None:
-        self.dataset = dataset
-        self.indices = indices
-
-    def __getitem__(self, idx):
-        return self.dataset[self.indices[idx]]
-
-    def __len__(self):
-        return len(self.indices)
-'''
 
 # %%
 def get_stratified_sampler_for_subset(subset, target_variable_name):
