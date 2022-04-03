@@ -11,7 +11,7 @@ import socket
 import pytorch_lightning as pl
 from pytorch_lightning import Trainer
 from pytorch_lightning.loggers import TensorBoardLogger, WandbLogger
-from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
+from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping, LearningRateMonitor
 from pytorch_lightning.plugins import DDPPlugin
 from sklearn.model_selection import train_test_split
 
@@ -308,6 +308,8 @@ if __name__=='__main__':
                                      verbose    = True,
                                      mode       = 'min')
 
+    cb_lr_monitor = LearningRateMonitor(logging_interval='epoch')
+
     trainer = Trainer(max_epochs            = NUM_EPOCHS, 
                       fast_dev_run          = False,     # Run a single-batch through train and val and see if the code works. No TB or wandb logs
                       gpus                  = -1,        # -1 to use all available GPUs, [0, 1, 2] to specify GPUs by index
@@ -318,7 +320,7 @@ if __name__=='__main__':
                       logger                = [logger_tb, logger_wandb],
                       log_every_n_steps     = 10,
                       accelerator           = 'ddp',
-                      callbacks             = [cb_checkpoint, cb_earlystopping],
+                      callbacks             = [cb_checkpoint, cb_earlystopping, cb_lr_monitor],
                       plugins               = DDPPlugin(find_unused_parameters=False),
                       replace_sampler_ddp   = False) # False when using custom sampler
 
