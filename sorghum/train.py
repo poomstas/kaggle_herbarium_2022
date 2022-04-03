@@ -4,9 +4,8 @@ from datetime import datetime
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader, random_split, Subset
 import torchvision.transforms as transforms
-import matplotlib.pyplot as plt
 import socket
 
 import pytorch_lightning as pl
@@ -21,7 +20,7 @@ from albumentations.pytorch.transforms import ToTensorV2
 
 from src.data import SorghumDataset
 from src.constants import CULTIVAR_LABELS_IND2STR, CULTIVAR_LABELS_STR2IND, IMAGENET_NORMAL_MEAN, IMAGENET_NORMAL_STD, BACKBONE_IMG_SIZE
-from src.utils import balance_val_split_idx, get_stratified_sampler_for_subset
+from src.utils import balance_val_split, get_stratified_sampler, get_stratified_sampler_for_subset
 
 # %%
 class SorghumLitModel(pl.LightningModule):
@@ -76,54 +75,38 @@ class SorghumLitModel(pl.LightningModule):
         '''
 
         if stage in (None, "fit"):
-            print('='*90)
-            print('NOW IN FIT MODE')
-            print('='*90)
+        # ==================================================================================================
+        #       Apply separate transforms for train and val sets
+        #       Separate batch samplers for train and val (stratified sampling + DDP)
+        #       Reference:
+        #         https://discuss.pytorch.org/t/changing-transforms-after-creating-a-dataset/64929/5
+        # ==================================================================================================
 
-            trainval_dataset = SorghumDataset(csv_fullpath='../../dataset/sorghum/train_cultivar_mapping.csv',
-                                    transform=None, # Apply separate transforms in training_step and validation_step
-                                    testset=False)
+            csv_fullpath = '/home/brian/github/dataset/sorghum/train_cultivar_mapping.csv'
 
-            # Returns two Subset class objects
-            self.train_dataset, self.val_dataset = \
-                random_split(trainval_dataset, [round(len(trainval_dataset)*0.8), round(len(trainval_dataset)*0.2)])
+            train_dataset = SorghumDataset(csv_fullpath=csv_fullpath,
+                                           transform=self.transforms['train'],
+                                           testset=False)
+            val_dataset   = SorghumDataset(csv_fullpath=csv_fullpath,
+                                           transform=self.transforms['val'],
+                                           testset=False)
 
-            # Apply separate transforms after separation
-            self.train_dataset.dataset.transform = self.transforms['train']
-            self.val_dataset.dataset.transform = self.transforms['val']
+            # Stratified separation of training and validation sets
+            train_indx, val_indx = balance_val_split(dataset=train_dataset,
+                                                     stratify_by='cultivar_indx',
+                                                     test_size=0.2,
+                                                     random_state=None)
 
-            # Set sampler to None, for now (crashes if I try to do stratified sampling)
-            self.train_sampler = None
-            self.val_sampler = None
+            # Get subsets from separate dataset sources bec. transforms are different
+            self.train_dataset = Subset(train_dataset, indices=train_indx)
+            self.val_dataset   = Subset(val_dataset  , indices=val_indx)
 
-            # ============================================================================
-            # Trying to fix the problem of having separate transforms for train and val
-            # Also trying to fix the issue of having separate samplers for train and val (stratified sampling + DDP)
-            # https://discuss.pytorch.org/t/changing-transforms-after-creating-a-dataset/64929/5
-            # csv_fullpath = '../../dataset/sorghum/train_cultivar_mapping.csv'
-
-            # trainval_dataset = SorghumDataset(csv_fullpath=csv_fullpath,
-            #                                 transform=None, # Apply separate transforms in training_step and validation_step
-            #                                 testset='trainval')
-
-            # train_indx, val_indx = balance_val_split_idx(csv_fullpath=csv_fullpath,
-            #                                             target_variable_name='cultivar_indx',
-            #                                             test_size=0.2,
-            #                                             random_state=None)
-
-            # self.train_dataset = SorghumDataset(csv_fullpath    = self.csv_fullpath,
-            #                                transform       = self.transforms['train'],
-            #                                testset         = False)
-            # self.val_dataset   = SorghumDataset(csv_fullpath    = self.csv_fullpath,
-            #                                transform       = self.transforms['val'],
-            #                                testset         = False)
-
+            # Stratified sampler for generating batches (within training and validation stages)
+            self.train_sampler, _ = get_stratified_sampler_for_subset(self.train_dataset, target_variable_name='cultivar_indx')
+            self.val_sampler = None     # Don't apply stratified sampling within validation sets
 
         if stage in (None, "test"):
-            print('='*90)
-            print('NOW IN TEST MODE')
-            print('='*90)
-            # May have to write a separate test setup code here.
+            pass
 
     def forward(self, x):
         if self.n_hidden_nodes is not None:
@@ -159,11 +142,12 @@ class SorghumLitModel(pl.LightningModule):
 
     #     return [self.optimizer], [scheduler]
 
-
     def train_dataloader(self):
+        shuffle = False if self.train_sampler is not None else True
+
         train_loader = DataLoader(dataset       = self.train_dataset,
                                   batch_size    = self.batch_size, 
-                                  shuffle       = True, 
+                                  shuffle       = shuffle, 
                                   num_workers   = self.num_workers,
                                   persistent_workers = True,
                                   sampler       = self.train_sampler)
@@ -225,14 +209,14 @@ class SorghumLitModel(pl.LightningModule):
                 writer.writerow([filename, CULTIVAR_LABELS_IND2STR[classification]])
 
 # %% Hyperparameters
-PRETRAINED = True
-N_HIDDEN_NODES = 500    # No hidden layer if None
-DROPOUT_RATE = 0        # No dropout if 0
-NUM_CLASSES = 100       # Fixed (for this challenge)
-NUM_EPOCHS = 60
-LR = 0.001              # Set up to be automatically adjusted (see Trainer parameter)
-NUM_WORKERS= 16         # use os.cpu_count()
-BACKBONE = 'xception'
+PRETRAINED          = True
+N_HIDDEN_NODES      = 500       # No hidden layer if None
+DROPOUT_RATE        = 0         # No dropout if 0
+NUM_CLASSES         = 100       # Fixed (for this challenge)
+NUM_EPOCHS          = 60
+LR                  = 0.001     # Set up to be automatically adjusted (see Trainer parameter)
+NUM_WORKERS         = 16        # use os.cpu_count()
+BACKBONE            = 'xception'
 
 host_name = socket.gethostname()
 if BACKBONE == 'xception':
@@ -301,7 +285,7 @@ TRANSFORMS = A.Compose([
             ])
 '''
 
-TB_NOTES = "SH1R0's transforms, without normalization and ISONoise"
+TB_NOTES = "RemovedStratifiedSamplingForValSet___DDP_StratifiedSampler_SH1R0s transforms, without normalization and ISONoise"
 
 # %%
 if __name__=='__main__':
@@ -313,19 +297,19 @@ if __name__=='__main__':
     logger_wandb = WandbLogger(project='Sorghum', name=now, mode='online') # online or disabled
 
     # Saves checkpoints at every epoch
-    cb_checkpoint = ModelCheckpoint(dirpath='./tb_logs/{}/'.format(now), 
-                                    monitor='val_loss', 
-                                    filename='{epoch:02d}-{val_loss:.2f}',
-                                    save_top_k=3)
+    cb_checkpoint = ModelCheckpoint(dirpath     = './tb_logs/{}/'.format(now), 
+                                    monitor     = 'val_loss', 
+                                    filename    = '{epoch:02d}-{val_loss:.2f}',
+                                    save_top_k  = 3)
 
-    cb_earlystopping = EarlyStopping(monitor = 'val_loss',
-                                     patience = 7,
-                                     strict = True, # whether to crash the training if monitor is not found in the val metrics
-                                     verbose = True,
-                                     mode = 'min')
+    cb_earlystopping = EarlyStopping(monitor    = 'val_loss',
+                                     patience   = 7,
+                                     strict     = True, # whether to crash the training if monitor is not found in the val metrics
+                                     verbose    = True,
+                                     mode       = 'min')
 
     trainer = Trainer(max_epochs            = NUM_EPOCHS, 
-                      fast_dev_run          = True,      # Run a single-batch through train and val and see if the code works. No TB or wandb logs
+                      fast_dev_run          = False,     # Run a single-batch through train and val and see if the code works. No TB or wandb logs
                       gpus                  = -1,        # -1 to use all available GPUs, [0, 1, 2] to specify GPUs by index
                       auto_select_gpus      = True,
                       auto_lr_find          = True,
@@ -335,7 +319,8 @@ if __name__=='__main__':
                       log_every_n_steps     = 10,
                       accelerator           = 'ddp',
                       callbacks             = [cb_checkpoint, cb_earlystopping],
-                      plugins               = DDPPlugin(find_unused_parameters=False))
+                      plugins               = DDPPlugin(find_unused_parameters=False),
+                      replace_sampler_ddp   = False) # False when using custom sampler
 
     model = SorghumLitModel(backbone        = BACKBONE, 
                             transforms      = TRANSFORMS, 

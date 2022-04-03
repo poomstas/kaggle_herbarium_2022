@@ -28,10 +28,8 @@ from torch.utils.data import Subset, DataLoader
 #     return df_train, df_val, train_idx, val_idx
 
 # %%
-def balance_val_split_idx(csv_fullpath, target_variable_name, test_size=0.2, random_state=None):
-    # targets = np.array(dataset.targets)
-    df = pd.read_csv(csv_fullpath)
-    targets = np.array(df[target_variable_name])
+def balance_val_split(dataset, stratify_by, test_size=0.2, random_state=None):
+    targets = np.array(dataset.df[stratify_by])
     train_idx, val_idx = train_test_split(
                             np.arange(len(targets)),
                             test_size=test_size,
@@ -39,20 +37,6 @@ def balance_val_split_idx(csv_fullpath, target_variable_name, test_size=0.2, ran
                             stratify=targets,
                             random_state=random_state)
     return train_idx, val_idx
-
-# %%
-def balance_val_split(dataset, target_variable_name, test_size=0.2, random_state=None):
-    # targets = np.array(dataset.targets)
-    targets = np.array(dataset.df[target_variable_name])
-    train_idx, val_idx = train_test_split(
-                            np.arange(len(targets)),
-                            test_size=test_size,
-                            shuffle=True,
-                            stratify=targets,
-                            random_state=random_state)
-    train_dataset = Subset(dataset, indices=train_idx)
-    val_dataset = Subset(dataset, indices=val_idx)
-    return train_dataset, val_dataset
 
 # %%
 def get_stratified_sampler_for_subset(subset, target_variable_name):

@@ -20,7 +20,7 @@ from src.constants import BACKBONE_IMG_SIZE
 # CHK_PATH = "/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220402_195622_SH1R0's transforms, without normalization and ISONoise/epoch=23-val_loss=0.38.ckpt"
 
 # To Try
-CHK_PATH = ""
+CHK_PATH = "/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220403_113842_DDP_StratifiedSampler_SH1R0s transforms, without normalization and ISONoise/epoch=18-val_loss=0.28.ckpt"
 # CHK_PATH = ""
 # CHK_PATH = ""
 # CHK_PATH = ""
