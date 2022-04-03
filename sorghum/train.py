@@ -104,7 +104,7 @@ class SorghumLitModel(pl.LightningModule):
         #         https://discuss.pytorch.org/t/changing-transforms-after-creating-a-dataset/64929/5
         # ==================================================================================================
 
-            csv_fullpath = '/home/brian/github/dataset/sorghum/train_cultivar_mapping.csv'
+            csv_fullpath = '~/github/dataset/sorghum/train_cultivar_mapping.csv'
 
             train_dataset = SorghumDataset(csv_fullpath     = csv_fullpath,
                                            transform        = self.transforms['train'],
