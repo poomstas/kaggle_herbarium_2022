@@ -84,6 +84,20 @@ class SorghumLitModel(pl.LightningModule):
         # lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1)
         # return [optimizer], [lr_scheduler]
 
+    # def configure_optimizers(self):
+    #     self.optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
+    #     self.scheduler = torch.optim.lr_scheduler.OneCycleLR(self.optimizer, 
+    #                                                          epochs              = CFG.num_epochs, 
+    #                                                          steps_per_epoch     = CFG.steps_per_epoch,
+    #                                                          max_lr              = CFG.max_lr, 
+    #                                                          pct_start           = CFG.pct_start, 
+    #                                                          div_factor          = CFG.div_factor, 
+    #                                                          final_div_factor    = CFG.final_div_factor)
+    #     scheduler = {'scheduler': self.scheduler, 'interval': 'step',}
+
+    #     return [self.optimizer], [scheduler]
+
+
     def train_dataloader(self):
         train_loader = DataLoader(dataset       = self.train_dataset,
                                   batch_size    = self.batch_size, 
