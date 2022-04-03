@@ -273,7 +273,7 @@ TRANSFORMS = {'train': A.Compose([
                 ToTensorV2(), # np.array HWC image -> torch.Tensor CHW
             ])}
 
-TB_NOTES = "2FCLayer1stLayer4096"
+TB_NOTES = "OneCycleLR_2FCLayer1stLayer4096"
 
 '''
 # https://www.kaggle.com/code/pegasos/sorghum-pytorch-lightning-starter-training
