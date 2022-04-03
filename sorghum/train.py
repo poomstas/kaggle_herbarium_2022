@@ -1,12 +1,13 @@
 # %%
 import csv
-from datetime import datetime
+import socket
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.utils.data import DataLoader, random_split, Subset
 import torchvision.transforms as transforms
-import socket
+from torch.utils.data import DataLoader, random_split, Subset
+from torch.optim.lr_scheduler import ReduceLROnPlateau
+from datetime import datetime
 
 import pytorch_lightning as pl
 from pytorch_lightning import Trainer
@@ -24,11 +25,12 @@ from src.utils import balance_val_split, get_stratified_sampler, get_stratified_
 
 # %%
 class SorghumLitModel(pl.LightningModule):
-    def __init__(self, backbone, transforms, num_classes, batch_size, lr, n_hidden_nodes, 
+    def __init__(self, num_epochs, backbone, transforms, num_classes, batch_size, lr, n_hidden_nodes, 
                  dropout_rate=0, pretrained=True, num_workers=4):
         super(SorghumLitModel, self).__init__()
         self.save_hyperparameters() # Need this later to load_from_checkpoint without providing the hyperparams again
 
+        self.num_epochs = num_epochs
         self.transforms = transforms # {'train': A.Compose([...]), 'val': A.Compose([...])}
         self.batch_size = batch_size
         self.lr = lr
@@ -53,9 +55,29 @@ class SorghumLitModel(pl.LightningModule):
         if self.n_hidden_nodes is None:
             self.img_fc1 = nn.Linear(n_backbone_out, num_classes)
         else:
-            self.img_fc1 = nn.Linear(n_backbone_out, n_hidden_nodes)
-            self.relu = nn.ReLU()
-            self.fc1 = nn.Linear(n_hidden_nodes, num_classes)
+            self.img_fc1 = nn.Linear(n_backbone_out, n_hidden_nodes//2)
+            self.relu1 = nn.ReLU()
+            self.fc2 = nn.Linear(n_hidden_nodes//2, n_hidden_nodes//4)
+            self.relu2 = nn.ReLU()
+            self.fc3 = nn.Linear(n_hidden_nodes//4, num_classes)
+            self.relu3 = nn.ReLU()
+
+    def forward(self, x):
+        if self.n_hidden_nodes is not None:
+            out = self.model(x)
+            out = self.dropout(out)
+            out = self.img_fc1(out)
+            out = self.relu1(out)
+            out = self.dropout(out)
+            out = self.fc2(out)
+            out = self.relu2(out)
+            out = self.dropout(out)
+            out = self.fc3(out) # No activation and no softmax at the end (contained in F.cross_entropy())
+        else:
+            out = self.model(x)
+            out = self.dropout(out)
+            out = self.img_fc1(out)
+        return out
 
     def setup(self, stage=None):
         '''
@@ -105,62 +127,59 @@ class SorghumLitModel(pl.LightningModule):
             self.train_sampler, _ = get_stratified_sampler_for_subset(self.train_dataset, target_variable_name='cultivar_indx')
             self.val_sampler = None     # Don't apply stratified sampling within validation sets
 
+            shuffle = False if self.train_sampler is not None else True
+
+            self.train_loader = DataLoader(dataset       = self.train_dataset,
+                                           batch_size    = self.batch_size, 
+                                           shuffle       = shuffle, 
+                                           num_workers   = self.num_workers,
+                                           persistent_workers = True,
+                                           sampler       = self.train_sampler)
+
+            self.val_loader = DataLoader(dataset         = self.val_dataset, 
+                                         batch_size      = self.batch_size, 
+                                         shuffle         = False, 
+                                         num_workers     = self.num_workers,
+                                         persistent_workers = True,
+                                         sampler         = self.val_sampler)
+
         if stage in (None, "test"):
             pass
 
-    def forward(self, x):
-        if self.n_hidden_nodes is not None:
-            out = self.model(x)
-            out = self.dropout(out)
-            out = self.img_fc1(out)
-            out = self.relu(out)
-            out = self.dropout(out)
-            out = self.fc1(out) # No activation and no softmax at the end
-        else:
-            out = self.model(x)
-            out = self.dropout(out)
-            out = self.img_fc1(out)
-        return out
-
     def configure_optimizers(self):
+        optimizer = torch.optim.Adam(self.parameters(), lr=1e-5)
+        scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, 
+                                                        epochs              = self.num_epochs, 
+                                                        steps_per_epoch     = len(self.train_loader),
+                                                        max_lr              = 1e-4, 
+                                                        pct_start           = 0.2, 
+                                                        div_factor          = 1.0e+3, 
+                                                        final_div_factor    = 1.0e+3)
+        scheduler = {'scheduler': scheduler, 'interval': 'step'}
+
+        return [optimizer], [scheduler]
+
+        '''
+        Alternative #1:
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
-        return optimizer
-        # Can also set up the lr_scheduler here as well, like below:
-        # lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1)
-        # return [optimizer], [lr_scheduler]
-
-    # def configure_optimizers(self):
-    #     self.optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
-    #     self.scheduler = torch.optim.lr_scheduler.OneCycleLR(self.optimizer, 
-    #                                                          epochs              = CFG.num_epochs, 
-    #                                                          steps_per_epoch     = CFG.steps_per_epoch,
-    #                                                          max_lr              = CFG.max_lr, 
-    #                                                          pct_start           = CFG.pct_start, 
-    #                                                          div_factor          = CFG.div_factor, 
-    #                                                          final_div_factor    = CFG.final_div_factor)
-    #     scheduler = {'scheduler': self.scheduler, 'interval': 'step',}
-
-    #     return [self.optimizer], [scheduler]
+        scheduler = ReduceLROnPlateau(optimizer = optimizer, 
+                                      patience  = 4, 
+                                      factor    = 0.3, 
+                                      min_lr    = 0.00001, 
+                                      verbose   = True)
+        return [optimizer], [scheduler]
+        
+        Alternative #2:
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1)
+        return [optimizer], [scheduler]
+        '''
 
     def train_dataloader(self):
-        shuffle = False if self.train_sampler is not None else True
-
-        train_loader = DataLoader(dataset       = self.train_dataset,
-                                  batch_size    = self.batch_size, 
-                                  shuffle       = shuffle, 
-                                  num_workers   = self.num_workers,
-                                  persistent_workers = True,
-                                  sampler       = self.train_sampler)
-        return train_loader
+        return self.train_loader
 
     def val_dataloader(self):
-        val_loader = DataLoader(dataset         = self.val_dataset, 
-                                batch_size      = self.batch_size, 
-                                shuffle         = False, 
-                                num_workers     = self.num_workers,
-                                persistent_workers = True,
-                                sampler         = self.val_sampler)
-        return val_loader
+        return self.val_loader
 
     def training_step(self, batch, batch_idx):
         images, cultivar_indx = batch
@@ -210,12 +229,12 @@ class SorghumLitModel(pl.LightningModule):
 
 # %% Hyperparameters
 PRETRAINED          = True
-N_HIDDEN_NODES      = 500       # No hidden layer if None
-DROPOUT_RATE        = 0         # No dropout if 0
-NUM_CLASSES         = 100       # Fixed (for this challenge)
-NUM_EPOCHS          = 60
-LR                  = 0.001     # Set up to be automatically adjusted (see Trainer parameter)
-NUM_WORKERS         = 16        # use os.cpu_count()
+N_HIDDEN_NODES      = 4096          # No hidden layer if None, backbone out has 2048, final has 100
+DROPOUT_RATE        = 0.3           # No dropout if 0
+NUM_CLASSES         = 100           # Fixed (for this challenge)
+NUM_EPOCHS          = 60    
+LR                  = 0.0001
+NUM_WORKERS         = 16            # use os.cpu_count()
 BACKBONE            = 'xception'
 
 host_name = socket.gethostname()
@@ -244,10 +263,7 @@ TRANSFORMS = {'train': A.Compose([
                 #     A.GridDropout(ratio=0.5, p=0.2),
                 #     A.CoarseDropout(max_holes=16, min_holes=8, max_height=16, max_width=16, min_height=8, min_width=8, p=0.2)
                 # ], p=0.2),
-
-                # A.ColorJitter (brightness=0.2, contrast=0.2, p=0.3),
-                # A.ChannelShuffle(p=0.3),
-                # A.Normalize(IMAGENET_NORMAL_MEAN, IMAGENET_NORMAL_STD), # Turning this on obliterated performance (only for validation metrics)
+               # A.Normalize(IMAGENET_NORMAL_MEAN, IMAGENET_NORMAL_STD), # Turning this on obliterated performance (only for validation metrics)
                 ToTensorV2(), # np.array HWC image -> torch.Tensor CHW
             ]), # Try one where the normalization happens before colorjitter and channelshuffle -> not a good idea
 
@@ -256,6 +272,8 @@ TRANSFORMS = {'train': A.Compose([
                 # A.Normalize(IMAGENET_NORMAL_MEAN, IMAGENET_NORMAL_STD),
                 ToTensorV2(), # np.array HWC image -> torch.Tensor CHW
             ])}
+
+TB_NOTES = "2FCLayer1stLayer4096"
 
 '''
 # https://www.kaggle.com/code/pegasos/sorghum-pytorch-lightning-starter-training
@@ -285,8 +303,6 @@ TRANSFORMS = A.Compose([
             ])
 '''
 
-TB_NOTES = "RemovedStratifiedSamplingForValSet___DDP_StratifiedSampler_SH1R0s transforms, without normalization and ISONoise"
-
 # %%
 if __name__=='__main__':
     now = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -303,7 +319,7 @@ if __name__=='__main__':
                                     save_top_k  = 3)
 
     cb_earlystopping = EarlyStopping(monitor    = 'val_loss',
-                                     patience   = 7,
+                                     patience   = 8,
                                      strict     = True, # whether to crash the training if monitor is not found in the val metrics
                                      verbose    = True,
                                      mode       = 'min')
@@ -324,7 +340,8 @@ if __name__=='__main__':
                       plugins               = DDPPlugin(find_unused_parameters=False),
                       replace_sampler_ddp   = False) # False when using custom sampler
 
-    model = SorghumLitModel(backbone        = BACKBONE, 
+    model = SorghumLitModel(num_epochs      = NUM_EPOCHS,
+                            backbone        = BACKBONE, 
                             transforms      = TRANSFORMS, 
                             num_classes     = NUM_CLASSES,
                             batch_size      = BATCH_SIZE, 
