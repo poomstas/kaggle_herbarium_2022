@@ -4,22 +4,23 @@ from datetime import datetime
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader, random_split, Subset
 import torchvision.transforms as transforms
-import matplotlib.pyplot as plt
 import socket
 
-import pytorch_lightning as pl # Works with pl.__version__ == '1.5.10'
+import pytorch_lightning as pl
 from pytorch_lightning import Trainer
 from pytorch_lightning.loggers import TensorBoardLogger, WandbLogger
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 from pytorch_lightning.plugins import DDPPlugin
+from sklearn.model_selection import train_test_split
 
 import albumentations as A
 from albumentations.pytorch.transforms import ToTensorV2
 
 from src.data import SorghumDataset
 from src.constants import CULTIVAR_LABELS_IND2STR, CULTIVAR_LABELS_STR2IND, IMAGENET_NORMAL_MEAN, IMAGENET_NORMAL_STD, BACKBONE_IMG_SIZE
+from src.utils import balance_val_split, get_stratified_sampler, get_stratified_sampler_for_subset
 
 # %%
 class SorghumLitModel(pl.LightningModule):
@@ -28,7 +29,7 @@ class SorghumLitModel(pl.LightningModule):
         super(SorghumLitModel, self).__init__()
         self.save_hyperparameters() # Need this later to load_from_checkpoint without providing the hyperparams again
 
-        self.transforms = transforms # Define transforms using albumentations here!
+        self.transforms = transforms # {'train': A.Compose([...]), 'val': A.Compose([...])}
         self.batch_size = batch_size
         self.lr = lr
         self.num_workers= num_workers
@@ -56,12 +57,56 @@ class SorghumLitModel(pl.LightningModule):
             self.relu = nn.ReLU()
             self.fc1 = nn.Linear(n_hidden_nodes, num_classes)
 
-        trainval_dataset = SorghumDataset(csv_fullpath='../../dataset/sorghum/train_cultivar_mapping.csv',
-                                   transform=self.transforms,
-                                   testset=False)
+    def setup(self, stage=None):
+        '''
+        The setup hook is used for the following:
+            - count number of classes
+            - build vocabulary
+            - perform train/val/test splits
+            - create datasets
+            - apply transforms (defined explicitly in your datamodule)
+            - etc...
 
-        self.train_dataset, self.val_dataset = \
-            random_split(trainval_dataset, [round(len(trainval_dataset)*0.8), round(len(trainval_dataset)*0.2)])
+        Called at the beginning of fit (train + validate), validate, test, or predict. This is a good hook when
+        you need to build models dynamically or adjust something about them. This hook is called on every process
+        when using DDP.
+
+        stage: either ``'fit'``, ``'validate'``, ``'test'``, or ``'predict'``
+        '''
+
+        if stage in (None, "fit"):
+        # ==================================================================================================
+        #       Apply separate transforms for train and val sets
+        #       Separate batch samplers for train and val (stratified sampling + DDP)
+        #       Reference:
+        #         https://discuss.pytorch.org/t/changing-transforms-after-creating-a-dataset/64929/5
+        # ==================================================================================================
+
+            csv_fullpath = '/home/brian/github/dataset/sorghum/train_cultivar_mapping.csv'
+
+            train_dataset = SorghumDataset(csv_fullpath=csv_fullpath,
+                                           transform=self.transforms['train'],
+                                           testset=False)
+            val_dataset   = SorghumDataset(csv_fullpath=csv_fullpath,
+                                           transform=self.transforms['val'],
+                                           testset=False)
+
+            # Stratified separation of training and validation sets
+            train_indx, val_indx = balance_val_split(dataset=train_dataset,
+                                                     stratify_by='cultivar_indx',
+                                                     test_size=0.2,
+                                                     random_state=None)
+
+            # Get subsets from separate dataset sources bec. transforms are different
+            self.train_dataset = Subset(train_dataset, indices=train_indx)
+            self.val_dataset   = Subset(val_dataset  , indices=val_indx)
+
+            # Stratified sampler for generating batches (within training and validation stages)
+            self.train_sampler, _ = get_stratified_sampler_for_subset(self.train_dataset, target_variable_name='cultivar_indx')
+            self.val_sampler = None     # Don't apply stratified sampling within validation sets
+
+        if stage in (None, "test"):
+            pass
 
     def forward(self, x):
         if self.n_hidden_nodes is not None:
@@ -84,12 +129,28 @@ class SorghumLitModel(pl.LightningModule):
         # lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1)
         # return [optimizer], [lr_scheduler]
 
+    # def configure_optimizers(self):
+    #     self.optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
+    #     self.scheduler = torch.optim.lr_scheduler.OneCycleLR(self.optimizer, 
+    #                                                          epochs              = CFG.num_epochs, 
+    #                                                          steps_per_epoch     = CFG.steps_per_epoch,
+    #                                                          max_lr              = CFG.max_lr, 
+    #                                                          pct_start           = CFG.pct_start, 
+    #                                                          div_factor          = CFG.div_factor, 
+    #                                                          final_div_factor    = CFG.final_div_factor)
+    #     scheduler = {'scheduler': self.scheduler, 'interval': 'step',}
+
+    #     return [self.optimizer], [scheduler]
+
     def train_dataloader(self):
+        shuffle = False if self.train_sampler is not None else True
+
         train_loader = DataLoader(dataset       = self.train_dataset,
                                   batch_size    = self.batch_size, 
-                                  shuffle       = True, 
+                                  shuffle       = shuffle, 
                                   num_workers   = self.num_workers,
-                                  persistent_workers = True)
+                                  persistent_workers = True,
+                                  sampler       = self.train_sampler)
         return train_loader
 
     def val_dataloader(self):
@@ -97,7 +158,8 @@ class SorghumLitModel(pl.LightningModule):
                                 batch_size      = self.batch_size, 
                                 shuffle         = False, 
                                 num_workers     = self.num_workers,
-                                persistent_workers = True)
+                                persistent_workers = True,
+                                sampler         = self.val_sampler)
         return val_loader
 
     def training_step(self, batch, batch_idx):
@@ -147,30 +209,83 @@ class SorghumLitModel(pl.LightningModule):
                 writer.writerow([filename, CULTIVAR_LABELS_IND2STR[classification]])
 
 # %% Hyperparameters
-PRETRAINED = True
-N_HIDDEN_NODES = 500 # No hidden layer if None
-DROPOUT_RATE = 0.5 # No dropout if 0
-NUM_CLASSES = 100 # Fixed (for this challenge)
-NUM_EPOCHS = 30
-LR = 0.001 # Set up to be automatically adjusted (see Trainer parameter)
-NUM_WORKERS= 16 # use os.cpu_count()
-BACKBONE = 'xception'
+PRETRAINED          = True
+N_HIDDEN_NODES      = 500       # No hidden layer if None
+DROPOUT_RATE        = 0         # No dropout if 0
+NUM_CLASSES         = 100       # Fixed (for this challenge)
+NUM_EPOCHS          = 60
+LR                  = 0.001     # Set up to be automatically adjusted (see Trainer parameter)
+NUM_WORKERS         = 16        # use os.cpu_count()
+BACKBONE            = 'xception'
 
 host_name = socket.gethostname()
 if BACKBONE == 'xception':
     BATCH_SIZE = 64 if host_name=='jupyter-brian' else 256 # effective batch size = batch_size * gpus * num_nodes. 256 on A100, 64 on GTX 1080Ti
 
-TRANSFORMS = A.Compose([
+TRANSFORMS = {'train': A.Compose([
                 A.RandomResizedCrop(height=BACKBONE_IMG_SIZE[BACKBONE], width=BACKBONE_IMG_SIZE[BACKBONE]), # Improved final score by 0.023 (0.575->0.598)
-                # A.Resize(height=BACKBONE_IMG_SIZE[BACKBONE], width=BACKBONE_IMG_SIZE[BACKBONE]),
                 A.HorizontalFlip(p=0.5), # Leaving this on improved performance (at 0.5)
                 A.VerticalFlip(p=0.5), # Leaving this on improved performance (at 0.5)
+                A.RandomRotate90(p=0.5),
+                A.ShiftScaleRotate(p=0.5),
+                A.HueSaturationValue(p=0.5),
+                # A.OneOf([
+                #     A.RandomBrightnessContrast(p=0.5),
+                #     A.RandomGamma(p=0.5),
+                # ], p=0.5),
+                # A.OneOf([
+                #     A.Blur(p=0.1),
+                #     A.GaussianBlur(p=0.1),
+                #     A.MotionBlur(p=0.1),
+                # ], p=0.1),
+                # A.OneOf([
+                #     A.GaussNoise(p=0.1),
+                #     # A.ISONoise(p=0.1),
+                #     A.GridDropout(ratio=0.5, p=0.2),
+                #     A.CoarseDropout(max_holes=16, min_holes=8, max_height=16, max_width=16, min_height=8, min_width=8, p=0.2)
+                # ], p=0.2),
+
                 # A.ColorJitter (brightness=0.2, contrast=0.2, p=0.3),
                 # A.ChannelShuffle(p=0.3),
                 # A.Normalize(IMAGENET_NORMAL_MEAN, IMAGENET_NORMAL_STD), # Turning this on obliterated performance (only for validation metrics)
                 ToTensorV2(), # np.array HWC image -> torch.Tensor CHW
-            ]) # Try one where the normalization happens before colorjitter and channelshuffle -> not a good idea
-TB_NOTES = 'Dropout, RandomResizedCrop, Flips, UnNormalized'
+            ]), # Try one where the normalization happens before colorjitter and channelshuffle -> not a good idea
+
+            'val': A.Compose([
+                A.Resize(height=BACKBONE_IMG_SIZE[BACKBONE], width=BACKBONE_IMG_SIZE[BACKBONE]),
+                # A.Normalize(IMAGENET_NORMAL_MEAN, IMAGENET_NORMAL_STD),
+                ToTensorV2(), # np.array HWC image -> torch.Tensor CHW
+            ])}
+
+'''
+# https://www.kaggle.com/code/pegasos/sorghum-pytorch-lightning-starter-training
+TRANSFORMS = A.Compose([
+                A.RandomResizedCrop(height=BACKBONE_IMG_SIZE[BACKBONE], width=BACKBONE_IMG_SIZE[BACKBONE]), # Improved final score by 0.023 (0.575->0.598)
+                A.Flip(p=0.5),
+                A.RandomRotate90(p=0.5),
+                A.ShiftScaleRotate(p=0.5),
+                A.HueSaturationValue(p=0.5),
+                A.OneOf([
+                    A.RandomBrightnessContrast(p=0.5),
+                    A.RandomGamma(p=0.5),
+                ], p=0.5),
+                A.OneOf([
+                    A.Blur(p=0.1),
+                    A.GaussianBlur(p=0.1),
+                    A.MotionBlur(p=0.1),
+                ], p=0.1),
+                A.OneOf([
+                    A.GaussNoise(p=0.1),
+                    # A.ISONoise(p=0.1),
+                    A.GridDropout(ratio=0.5, p=0.2),
+                    A.CoarseDropout(max_holes=16, min_holes=8, max_height=16, max_width=16, min_height=8, min_width=8, p=0.2)
+                ], p=0.2),
+                A.Normalize(IMAGENET_NORMAL_MEAN, IMAGENET_NORMAL_STD), # Turning this on obliterated performance (only for validation metrics)
+                ToTensorV2(), # np.array HWC image -> torch.Tensor CHW
+            ])
+'''
+
+TB_NOTES = "RemovedStratifiedSamplingForValSet___DDP_StratifiedSampler_SH1R0s transforms, without normalization and ISONoise"
 
 # %%
 if __name__=='__main__':
@@ -182,19 +297,19 @@ if __name__=='__main__':
     logger_wandb = WandbLogger(project='Sorghum', name=now, mode='online') # online or disabled
 
     # Saves checkpoints at every epoch
-    cb_checkpoint = ModelCheckpoint(dirpath='./tb_logs/{}/'.format(now), 
-                                    monitor='val_loss', 
-                                    filename='{epoch:02d}-{val_loss:.2f}',
-                                    save_top_k=3)
+    cb_checkpoint = ModelCheckpoint(dirpath     = './tb_logs/{}/'.format(now), 
+                                    monitor     = 'val_loss', 
+                                    filename    = '{epoch:02d}-{val_loss:.2f}',
+                                    save_top_k  = 3)
 
-    cb_earlystopping = EarlyStopping(monitor = 'val_loss',
-                                     patience = 7,
-                                     strict = True, # whether to crash the training if monitor is not found in the val metrics
-                                     verbose = True,
-                                     mode = 'min')
+    cb_earlystopping = EarlyStopping(monitor    = 'val_loss',
+                                     patience   = 7,
+                                     strict     = True, # whether to crash the training if monitor is not found in the val metrics
+                                     verbose    = True,
+                                     mode       = 'min')
 
     trainer = Trainer(max_epochs            = NUM_EPOCHS, 
-                      fast_dev_run          = False,     # Run a single-batch through train and val and see if the code works
+                      fast_dev_run          = False,     # Run a single-batch through train and val and see if the code works. No TB or wandb logs
                       gpus                  = -1,        # -1 to use all available GPUs, [0, 1, 2] to specify GPUs by index
                       auto_select_gpus      = True,
                       auto_lr_find          = True,
@@ -204,7 +319,8 @@ if __name__=='__main__':
                       log_every_n_steps     = 10,
                       accelerator           = 'ddp',
                       callbacks             = [cb_checkpoint, cb_earlystopping],
-                      plugins               = DDPPlugin(find_unused_parameters=False))
+                      plugins               = DDPPlugin(find_unused_parameters=False),
+                      replace_sampler_ddp   = False) # False when using custom sampler
 
     model = SorghumLitModel(backbone        = BACKBONE, 
                             transforms      = TRANSFORMS, 
