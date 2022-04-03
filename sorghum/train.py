@@ -148,29 +148,82 @@ class SorghumLitModel(pl.LightningModule):
 
 # %% Hyperparameters
 PRETRAINED = True
-N_HIDDEN_NODES = 500 # No hidden layer if None
-DROPOUT_RATE = 0.5 # No dropout if 0
-NUM_CLASSES = 100 # Fixed (for this challenge)
-NUM_EPOCHS = 30
-LR = 0.001 # Set up to be automatically adjusted (see Trainer parameter)
-NUM_WORKERS= 16 # use os.cpu_count()
+N_HIDDEN_NODES = 500    # No hidden layer if None
+DROPOUT_RATE = 0        # No dropout if 0
+NUM_CLASSES = 100       # Fixed (for this challenge)
+NUM_EPOCHS = 60
+LR = 0.001              # Set up to be automatically adjusted (see Trainer parameter)
+NUM_WORKERS= 16         # use os.cpu_count()
 BACKBONE = 'xception'
 
 host_name = socket.gethostname()
 if BACKBONE == 'xception':
     BATCH_SIZE = 64 if host_name=='jupyter-brian' else 256 # effective batch size = batch_size * gpus * num_nodes. 256 on A100, 64 on GTX 1080Ti
 
-TRANSFORMS = A.Compose([
+TRANSFORMS = {'train': A.Compose([
                 A.RandomResizedCrop(height=BACKBONE_IMG_SIZE[BACKBONE], width=BACKBONE_IMG_SIZE[BACKBONE]), # Improved final score by 0.023 (0.575->0.598)
-                # A.Resize(height=BACKBONE_IMG_SIZE[BACKBONE], width=BACKBONE_IMG_SIZE[BACKBONE]),
                 A.HorizontalFlip(p=0.5), # Leaving this on improved performance (at 0.5)
                 A.VerticalFlip(p=0.5), # Leaving this on improved performance (at 0.5)
+                A.RandomRotate90(p=0.5),
+                A.ShiftScaleRotate(p=0.5),
+                A.HueSaturationValue(p=0.5),
+                # A.OneOf([
+                #     A.RandomBrightnessContrast(p=0.5),
+                #     A.RandomGamma(p=0.5),
+                # ], p=0.5),
+                # A.OneOf([
+                #     A.Blur(p=0.1),
+                #     A.GaussianBlur(p=0.1),
+                #     A.MotionBlur(p=0.1),
+                # ], p=0.1),
+                # A.OneOf([
+                #     A.GaussNoise(p=0.1),
+                #     # A.ISONoise(p=0.1),
+                #     A.GridDropout(ratio=0.5, p=0.2),
+                #     A.CoarseDropout(max_holes=16, min_holes=8, max_height=16, max_width=16, min_height=8, min_width=8, p=0.2)
+                # ], p=0.2),
+
                 # A.ColorJitter (brightness=0.2, contrast=0.2, p=0.3),
                 # A.ChannelShuffle(p=0.3),
                 # A.Normalize(IMAGENET_NORMAL_MEAN, IMAGENET_NORMAL_STD), # Turning this on obliterated performance (only for validation metrics)
                 ToTensorV2(), # np.array HWC image -> torch.Tensor CHW
-            ]) # Try one where the normalization happens before colorjitter and channelshuffle -> not a good idea
-TB_NOTES = 'Dropout, RandomResizedCrop, Flips, UnNormalized'
+            ]), # Try one where the normalization happens before colorjitter and channelshuffle -> not a good idea
+
+            'val': A.Compose([
+                A.Resize(height=BACKBONE_IMG_SIZE[BACKBONE], width=BACKBONE_IMG_SIZE[BACKBONE]),
+                # A.Normalize(IMAGENET_NORMAL_MEAN, IMAGENET_NORMAL_STD),
+                ToTensorV2(), # np.array HWC image -> torch.Tensor CHW
+            ])}
+
+'''
+# https://www.kaggle.com/code/pegasos/sorghum-pytorch-lightning-starter-training
+TRANSFORMS = A.Compose([
+                A.RandomResizedCrop(height=BACKBONE_IMG_SIZE[BACKBONE], width=BACKBONE_IMG_SIZE[BACKBONE]), # Improved final score by 0.023 (0.575->0.598)
+                A.Flip(p=0.5),
+                A.RandomRotate90(p=0.5),
+                A.ShiftScaleRotate(p=0.5),
+                A.HueSaturationValue(p=0.5),
+                A.OneOf([
+                    A.RandomBrightnessContrast(p=0.5),
+                    A.RandomGamma(p=0.5),
+                ], p=0.5),
+                A.OneOf([
+                    A.Blur(p=0.1),
+                    A.GaussianBlur(p=0.1),
+                    A.MotionBlur(p=0.1),
+                ], p=0.1),
+                A.OneOf([
+                    A.GaussNoise(p=0.1),
+                    # A.ISONoise(p=0.1),
+                    A.GridDropout(ratio=0.5, p=0.2),
+                    A.CoarseDropout(max_holes=16, min_holes=8, max_height=16, max_width=16, min_height=8, min_width=8, p=0.2)
+                ], p=0.2),
+                A.Normalize(IMAGENET_NORMAL_MEAN, IMAGENET_NORMAL_STD), # Turning this on obliterated performance (only for validation metrics)
+                ToTensorV2(), # np.array HWC image -> torch.Tensor CHW
+            ])
+'''
+
+TB_NOTES = "SH1R0's transforms, without normalization and ISONoise"
 
 # %%
 if __name__=='__main__':
@@ -194,7 +247,7 @@ if __name__=='__main__':
                                      mode = 'min')
 
     trainer = Trainer(max_epochs            = NUM_EPOCHS, 
-                      fast_dev_run          = False,     # Run a single-batch through train and val and see if the code works
+                      fast_dev_run          = True,      # Run a single-batch through train and val and see if the code works. No TB or wandb logs
                       gpus                  = -1,        # -1 to use all available GPUs, [0, 1, 2] to specify GPUs by index
                       auto_select_gpus      = True,
                       auto_lr_find          = True,
