@@ -9,17 +9,19 @@ import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
 import socket
 
-import pytorch_lightning as pl # Works with pl.__version__ == '1.5.10'
+import pytorch_lightning as pl
 from pytorch_lightning import Trainer
 from pytorch_lightning.loggers import TensorBoardLogger, WandbLogger
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 from pytorch_lightning.plugins import DDPPlugin
+from sklearn.model_selection import train_test_split
 
 import albumentations as A
 from albumentations.pytorch.transforms import ToTensorV2
 
 from src.data import SorghumDataset
 from src.constants import CULTIVAR_LABELS_IND2STR, CULTIVAR_LABELS_STR2IND, IMAGENET_NORMAL_MEAN, IMAGENET_NORMAL_STD, BACKBONE_IMG_SIZE
+from src.utils import balance_val_split_idx, get_stratified_sampler_for_subset
 
 # %%
 class SorghumLitModel(pl.LightningModule):
@@ -28,7 +30,7 @@ class SorghumLitModel(pl.LightningModule):
         super(SorghumLitModel, self).__init__()
         self.save_hyperparameters() # Need this later to load_from_checkpoint without providing the hyperparams again
 
-        self.transforms = transforms # Define transforms using albumentations here!
+        self.transforms = transforms # {'train': A.Compose([...]), 'val': A.Compose([...])}
         self.batch_size = batch_size
         self.lr = lr
         self.num_workers= num_workers
@@ -56,12 +58,72 @@ class SorghumLitModel(pl.LightningModule):
             self.relu = nn.ReLU()
             self.fc1 = nn.Linear(n_hidden_nodes, num_classes)
 
-        trainval_dataset = SorghumDataset(csv_fullpath='../../dataset/sorghum/train_cultivar_mapping.csv',
-                                   transform=self.transforms,
-                                   testset=False)
+    def setup(self, stage=None):
+        '''
+        The setup hook is used for the following:
+            - count number of classes
+            - build vocabulary
+            - perform train/val/test splits
+            - create datasets
+            - apply transforms (defined explicitly in your datamodule)
+            - etc...
 
-        self.train_dataset, self.val_dataset = \
-            random_split(trainval_dataset, [round(len(trainval_dataset)*0.8), round(len(trainval_dataset)*0.2)])
+        Called at the beginning of fit (train + validate), validate, test, or predict. This is a good hook when
+        you need to build models dynamically or adjust something about them. This hook is called on every process
+        when using DDP.
+
+        stage: either ``'fit'``, ``'validate'``, ``'test'``, or ``'predict'``
+        '''
+
+        if stage in (None, "fit"):
+            print('='*90)
+            print('NOW IN FIT MODE')
+            print('='*90)
+
+            trainval_dataset = SorghumDataset(csv_fullpath='../../dataset/sorghum/train_cultivar_mapping.csv',
+                                    transform=None, # Apply separate transforms in training_step and validation_step
+                                    testset=False)
+
+            # Returns two Subset class objects
+            self.train_dataset, self.val_dataset = \
+                random_split(trainval_dataset, [round(len(trainval_dataset)*0.8), round(len(trainval_dataset)*0.2)])
+
+            # Apply separate transforms after separation
+            self.train_dataset.dataset.transform = self.transforms['train']
+            self.val_dataset.dataset.transform = self.transforms['val']
+
+            # Set sampler to None, for now (crashes if I try to do stratified sampling)
+            self.train_sampler = None
+            self.val_sampler = None
+
+            # ============================================================================
+            # Trying to fix the problem of having separate transforms for train and val
+            # Also trying to fix the issue of having separate samplers for train and val (stratified sampling + DDP)
+            # https://discuss.pytorch.org/t/changing-transforms-after-creating-a-dataset/64929/5
+            # csv_fullpath = '../../dataset/sorghum/train_cultivar_mapping.csv'
+
+            # trainval_dataset = SorghumDataset(csv_fullpath=csv_fullpath,
+            #                                 transform=None, # Apply separate transforms in training_step and validation_step
+            #                                 testset='trainval')
+
+            # train_indx, val_indx = balance_val_split_idx(csv_fullpath=csv_fullpath,
+            #                                             target_variable_name='cultivar_indx',
+            #                                             test_size=0.2,
+            #                                             random_state=None)
+
+            # self.train_dataset = SorghumDataset(csv_fullpath    = self.csv_fullpath,
+            #                                transform       = self.transforms['train'],
+            #                                testset         = False)
+            # self.val_dataset   = SorghumDataset(csv_fullpath    = self.csv_fullpath,
+            #                                transform       = self.transforms['val'],
+            #                                testset         = False)
+
+
+        if stage in (None, "test"):
+            print('='*90)
+            print('NOW IN TEST MODE')
+            print('='*90)
+            # May have to write a separate test setup code here.
 
     def forward(self, x):
         if self.n_hidden_nodes is not None:
@@ -103,7 +165,8 @@ class SorghumLitModel(pl.LightningModule):
                                   batch_size    = self.batch_size, 
                                   shuffle       = True, 
                                   num_workers   = self.num_workers,
-                                  persistent_workers = True)
+                                  persistent_workers = True,
+                                  sampler       = self.train_sampler)
         return train_loader
 
     def val_dataloader(self):
@@ -111,7 +174,8 @@ class SorghumLitModel(pl.LightningModule):
                                 batch_size      = self.batch_size, 
                                 shuffle         = False, 
                                 num_workers     = self.num_workers,
-                                persistent_workers = True)
+                                persistent_workers = True,
+                                sampler         = self.val_sampler)
         return val_loader
 
     def training_step(self, batch, batch_idx):
