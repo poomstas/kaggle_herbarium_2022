@@ -18,9 +18,14 @@ from src.constants import BACKBONE_IMG_SIZE
 # CHK_PATH = '/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220402_103938_Dropout, RandomResizedCrop, Flips, UnNormalized/epoch=28-val_loss=0.25.ckpt'
 # CHK_PATH = "/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220402_135655_SH1R0's transforms, without normalization and ISONoise/epoch=28-val_loss=2.27.ckpt"
 # CHK_PATH = "/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220402_195622_SH1R0's transforms, without normalization and ISONoise/epoch=23-val_loss=0.38.ckpt"
+# CHK_PATH = "/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220403_113842_DDP_StratifiedSampler_SH1R0s transforms, without normalization and ISONoise/epoch=18-val_loss=0.28.ckpt"
+# CHK_PATH = "/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220403_183214_First3Trans_DDPStratifiedSampler/epoch=36-val_loss=0.17.ckpt"
+# CHK_PATH = "/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220403_205250_3FCLayer1stLayer4096/epoch=37-val_loss=0.26.ckpt"
+# CHK_PATH = "/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220403_232455_OneCycleLR_2FCLayer1stLayer4096/epoch=25-val_loss=0.08.ckpt"
+# CHK_PATH = "/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220404_003524_OneCycleLR_2FCLayer1stLayer4096/epoch=29-val_loss=0.06.ckpt"
 
 # To Try
-CHK_PATH = "/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220403_113842_DDP_StratifiedSampler_SH1R0s transforms, without normalization and ISONoise/epoch=18-val_loss=0.28.ckpt"
+CHK_PATH = "/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220404_021721_OneCycleLR_2FCLayer1stLayer4096/epoch=59-val_loss=0.02.ckpt"
 # CHK_PATH = ""
 # CHK_PATH = ""
 # CHK_PATH = ""
