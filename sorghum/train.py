@@ -106,18 +106,18 @@ class SorghumLitModel(pl.LightningModule):
 
             csv_fullpath = '/home/brian/github/dataset/sorghum/train_cultivar_mapping.csv'
 
-            train_dataset = SorghumDataset(csv_fullpath=csv_fullpath,
-                                           transform=self.transforms['train'],
-                                           testset=False)
-            val_dataset   = SorghumDataset(csv_fullpath=csv_fullpath,
-                                           transform=self.transforms['val'],
-                                           testset=False)
+            train_dataset = SorghumDataset(csv_fullpath     = csv_fullpath,
+                                           transform        = self.transforms['train'],
+                                           testset          = False)
+            val_dataset   = SorghumDataset(csv_fullpath     = csv_fullpath,
+                                           transform        = self.transforms['val'],
+                                           testset          = False)
 
             # Stratified separation of training and validation sets
-            train_indx, val_indx = balance_val_split(dataset=train_dataset,
-                                                     stratify_by='cultivar_indx',
-                                                     test_size=0.2,
-                                                     random_state=None)
+            train_indx, val_indx = balance_val_split(dataset        = train_dataset,
+                                                     stratify_by    = 'cultivar_indx',
+                                                     test_size      = 0.2,
+                                                     random_state   = None)
 
             # Get subsets from separate dataset sources bec. transforms are different
             self.train_dataset = Subset(train_dataset, indices=train_indx)
