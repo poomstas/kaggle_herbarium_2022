@@ -151,10 +151,10 @@ class SorghumLitModel(pl.LightningModule):
         scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, 
                                                         epochs              = self.num_epochs, 
                                                         steps_per_epoch     = len(self.train_loader), # The number of steps per epoch to train for. This is used along with epochs in order to infer the total number of steps in the cycle if a value for total_steps is not provided. Default: None
-                                                        max_lr              = 1e-3, 
+                                                        max_lr              = 7.5e-4, 
                                                         pct_start           = 0.3,  # The percentage of the cycle spent increasing the learning rate Default: 0.3
                                                         div_factor          = 25,   # Determines the initial learning rate via initial_lr = max_lr/div_factor Default: 25
-                                                        final_div_factor    = 1e+3) # Determines the minimum learning rate via min_lr = initial_lr/final_div_factor Default: 1e4
+                                                        final_div_factor    = 1e+4) # Determines the minimum learning rate via min_lr = initial_lr/final_div_factor Default: 1e4
         scheduler = {'scheduler': scheduler, 'interval': 'step'}
 
         return [optimizer], [scheduler]
@@ -239,7 +239,7 @@ BACKBONE            = 'xception'
 
 host_name = socket.gethostname()
 if BACKBONE == 'xception':
-    BATCH_SIZE = 64 if host_name=='jupyter-brian' else 256 # effective batch size = batch_size * gpus * num_nodes. 256 on A100, 64 on GTX 1080Ti
+    BATCH_SIZE = 30 if host_name=='jupyter-brian' else 256 # effective batch size = batch_size * gpus * num_nodes. 256 on A100, 64 on GTX 1080Ti
 
 TRANSFORMS = {'train': A.Compose([
                 A.RandomResizedCrop(height=BACKBONE_IMG_SIZE[BACKBONE], width=BACKBONE_IMG_SIZE[BACKBONE]), # Improved final score by 0.023 (0.575->0.598)
@@ -248,21 +248,21 @@ TRANSFORMS = {'train': A.Compose([
                 A.RandomRotate90(p=0.5),
                 A.ShiftScaleRotate(p=0.5),
                 A.HueSaturationValue(p=0.5),
-                # A.OneOf([
-                #     A.RandomBrightnessContrast(p=0.5),
-                #     A.RandomGamma(p=0.5),
-                # ], p=0.5),
-                # A.OneOf([
-                #     A.Blur(p=0.1),
-                #     A.GaussianBlur(p=0.1),
-                #     A.MotionBlur(p=0.1),
-                # ], p=0.1),
-                # A.OneOf([
-                #     A.GaussNoise(p=0.1),
-                #     # A.ISONoise(p=0.1),
-                #     A.GridDropout(ratio=0.5, p=0.2),
-                #     A.CoarseDropout(max_holes=16, min_holes=8, max_height=16, max_width=16, min_height=8, min_width=8, p=0.2)
-                # ], p=0.2),
+                A.OneOf([ # Including this improved performance from 0.725 to 0.730
+                    A.RandomBrightnessContrast(p=0.5),
+                    A.RandomGamma(p=0.5),
+                ], p=0.5),
+                A.OneOf([ # Decreased performance from 0.730 to 0.723
+                    A.Blur(p=0.1),
+                    A.GaussianBlur(p=0.1),
+                    A.MotionBlur(p=0.1),
+                ], p=0.1),
+                A.OneOf([ # ~ed performance from 0.723 to ~
+                    A.GaussNoise(p=0.1),
+                    # A.ISONoise(p=0.1), # img should be uint8
+                    A.GridDropout(ratio=0.5, p=0.2),
+                    A.CoarseDropout(max_holes=16, min_holes=8, max_height=16, max_width=16, min_height=8, min_width=8, p=0.2)
+                ], p=0.2),
                # A.Normalize(IMAGENET_NORMAL_MEAN, IMAGENET_NORMAL_STD), # Turning this on obliterated performance (only for validation metrics)
                 ToTensorV2(), # np.array HWC image -> torch.Tensor CHW
             ]), # Try one where the normalization happens before colorjitter and channelshuffle -> not a good idea
@@ -273,7 +273,7 @@ TRANSFORMS = {'train': A.Compose([
                 ToTensorV2(), # np.array HWC image -> torch.Tensor CHW
             ])}
 
-TB_NOTES = "OneCycleLR_2FCLayer1stLayer4096"
+TB_NOTES = "3OneOf_OneCycleLR_2FCLayer1stLayer4096_BaseCase20220404_075755"
 
 '''
 # https://www.kaggle.com/code/pegasos/sorghum-pytorch-lightning-starter-training
