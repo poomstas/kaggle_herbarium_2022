@@ -32,7 +32,7 @@ start_time = time.time()
 # CHK_PATH = "/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220404_171151_2OneOf_OneCycleLR_2FCLayer1stLayer4096_BaseCase20220404_075755/epoch=58-val_loss=0.02.ckpt"
 
 # To Try
-# CHK_PATH = ""
+CHK_PATH = ""
 # CHK_PATH = ""
 # CHK_PATH = ""
 # CHK_PATH = ""

@@ -257,7 +257,7 @@ TRANSFORMS = {'train': A.Compose([
                     A.GaussianBlur(p=0.1),
                     A.MotionBlur(p=0.1),
                 ], p=0.1),
-                A.OneOf([ # ~ed performance from 0.723 to ~
+                A.OneOf([ # Increased performance from 0.723 to 0.727
                     A.GaussNoise(p=0.1),
                     # A.ISONoise(p=0.1), # img should be uint8
                     A.GridDropout(ratio=0.5, p=0.2),
