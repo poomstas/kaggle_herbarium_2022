@@ -242,7 +242,7 @@ TRANSFORMS = {'train': A.Compose([
                 ], p=0.1),
                 A.OneOf([ # Increased performance from 0.723 to 0.727
                     A.GaussNoise(p=0.1),
-                    A.ISONoise(p=0.1), # img should be uint8
+                    A.ISONoise(p=0.1),
                     A.GridDropout(ratio=0.5, p=0.2),
                     A.CoarseDropout(max_holes=16, min_holes=8, max_height=16, max_width=16, min_height=8, min_width=8, p=0.2)
                 ], p=0.2),
@@ -256,36 +256,11 @@ TRANSFORMS = {'train': A.Compose([
                 ToTensorV2(), # np.array HWC image -> torch.Tensor CHW
             ])}
 
+# Transforms above inspired by the following post:
+#   https://www.kaggle.com/code/pegasos/sorghum-pytorch-lightning-starter-training
+
 TB_NOTES = "3OneOf_OneCycleLR_2FCLayer1stLayer4096_BaseCase20220404_075755"
 TB_NOTES += "_" + host_name
-
-'''
-# https://www.kaggle.com/code/pegasos/sorghum-pytorch-lightning-starter-training
-TRANSFORMS = A.Compose([
-                A.RandomResizedCrop(height=BACKBONE_IMG_SIZE[BACKBONE], width=BACKBONE_IMG_SIZE[BACKBONE]), # Improved final score by 0.023 (0.575->0.598)
-                A.Flip(p=0.5),
-                A.RandomRotate90(p=0.5),
-                A.ShiftScaleRotate(p=0.5),
-                A.HueSaturationValue(p=0.5),
-                A.OneOf([
-                    A.RandomBrightnessContrast(p=0.5),
-                    A.RandomGamma(p=0.5),
-                ], p=0.5),
-                A.OneOf([
-                    A.Blur(p=0.1),
-                    A.GaussianBlur(p=0.1),
-                    A.MotionBlur(p=0.1),
-                ], p=0.1),
-                A.OneOf([
-                    A.GaussNoise(p=0.1),
-                    # A.ISONoise(p=0.1),
-                    A.GridDropout(ratio=0.5, p=0.2),
-                    A.CoarseDropout(max_holes=16, min_holes=8, max_height=16, max_width=16, min_height=8, min_width=8, p=0.2)
-                ], p=0.2),
-                A.Normalize(IMAGENET_NORMAL_MEAN, IMAGENET_NORMAL_STD), # Turning this on obliterated performance (only for validation metrics)
-                ToTensorV2(), # np.array HWC image -> torch.Tensor CHW
-            ])
-'''
 
 # %%
 if __name__=='__main__':
