@@ -17,7 +17,7 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 # %%
 class SorghumDataset(Dataset):
-    def __init__(self, csv_fullpath, dataset_root='/home/brian/dataset/sorghum/', 
+    def __init__(self, csv_fullpath, dataset_root='./data/sorghum/',
                  transform=None, testset=False):
         self.transform                  = transform
         self.testset                    = testset # Boolean
@@ -80,7 +80,7 @@ if __name__=='__main__':
 
     # Train Dataset
     print('Testing Training Dataset')
-    ds_train = SorghumDataset(csv_fullpath='/home/brian/dataset/sorghum/train_cultivar_mapping.csv', 
+    ds_train = SorghumDataset(csv_fullpath='./data/sorghum/train_cultivar_mapping.csv', 
                               transform=transforms)
     dl_train = DataLoader(dataset=ds_train,
                           shuffle=True,
