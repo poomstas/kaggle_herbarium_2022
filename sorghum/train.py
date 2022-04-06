@@ -19,6 +19,8 @@ from sklearn.model_selection import train_test_split
 import albumentations as A
 from albumentations.pytorch.transforms import ToTensorV2
 
+from torchsummary import summary
+
 from src.data import SorghumDataset
 from src.constants import CULTIVAR_LABELS_IND2STR, CULTIVAR_LABELS_STR2IND, IMAGENET_NORMAL_MEAN, IMAGENET_NORMAL_STD, BACKBONE_IMG_SIZE
 from src.utils import balance_val_split, get_stratified_sampler, get_stratified_sampler_for_subset
@@ -35,49 +37,22 @@ class SorghumLitModel(pl.LightningModule):
         self.batch_size = batch_size
         self.lr = lr
         self.num_workers= num_workers
-
-        self.backbone = backbone
         self.n_hidden_nodes = n_hidden_nodes
-        self.dropout = nn.Dropout(p=dropout_rate)
 
         self.now = datetime.now().strftime('%Y%m%d_%H%M%S')
-        print('Run ID: ', self.now)
         self.tests_result_csv_filename = 'test_result_{}.csv'.format(self.now)
         self.csv_header_written = False
+        print('Run ID: ', self.now)
 
-        if self.backbone == 'xception': # INPUT_SIZE = 3 x 299 x 299
-            from pretrainedmodels import xception # densenet121, densenet201
-            self.model = xception(num_classes=1000, pretrained='imagenet' if pretrained else False)
-            self.model.last_linear = nn.Identity() # Outputs 2048
-            n_backbone_out = 2048
-            self.target_size=299
-
-        if self.n_hidden_nodes is None:
-            self.img_fc1 = nn.Linear(n_backbone_out, num_classes)
-        else:
-            self.img_fc1 = nn.Linear(n_backbone_out, n_hidden_nodes//2)
-            self.relu1 = nn.ReLU()
-            self.fc2 = nn.Linear(n_hidden_nodes//2, n_hidden_nodes//4)
-            self.relu2 = nn.ReLU()
-            self.fc3 = nn.Linear(n_hidden_nodes//4, num_classes)
-            self.relu3 = nn.ReLU()
+        if backbone == 'xception': # backbone_input_size = 3 x 299 x 299
+            from src.model import XceptionModel
+            self.model = XceptionModel(num_classes, pretrained, n_hidden_nodes, dropout_rate)
+            backbone_input_size = (3, 299, 299)
+        
+        summary(self.model, input_size=backbone_input_size, device='cpu', batch_size=self.batch_size)
 
     def forward(self, x):
-        if self.n_hidden_nodes is not None:
-            out = self.model(x)
-            out = self.dropout(out)
-            out = self.img_fc1(out)
-            out = self.relu1(out)
-            out = self.dropout(out)
-            out = self.fc2(out)
-            out = self.relu2(out)
-            out = self.dropout(out)
-            out = self.fc3(out) # No activation and no softmax at the end (contained in F.cross_entropy())
-        else:
-            out = self.model(x)
-            out = self.dropout(out)
-            out = self.img_fc1(out)
-        return out
+        return self.model.forward(x)
 
     def setup(self, stage=None):
         '''
@@ -282,7 +257,7 @@ TRANSFORMS = {'train': A.Compose([
             ])}
 
 TB_NOTES = "3OneOf_OneCycleLR_2FCLayer1stLayer4096_BaseCase20220404_075755"
-TB_NOTES += host_name
+TB_NOTES += "_" + host_name
 
 '''
 # https://www.kaggle.com/code/pegasos/sorghum-pytorch-lightning-starter-training
