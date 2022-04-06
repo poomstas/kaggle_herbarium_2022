@@ -221,7 +221,7 @@ if BACKBONE == 'xception':
     if host_name=='jupyter-brian':
         BATCH_SIZE = 30
     elif host_name=='hades-ubuntu':
-        BATCH_SIZE = 30
+        BATCH_SIZE = 32
     else:
         BATCH_SIZE = 256
 
