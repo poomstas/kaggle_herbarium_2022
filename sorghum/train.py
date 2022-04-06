@@ -267,17 +267,17 @@ TRANSFORMS = {'train': A.Compose([
                 ], p=0.1),
                 A.OneOf([ # Increased performance from 0.723 to 0.727
                     A.GaussNoise(p=0.1),
-                    # A.ISONoise(p=0.1), # img should be uint8
+                    A.ISONoise(p=0.1), # img should be uint8
                     A.GridDropout(ratio=0.5, p=0.2),
                     A.CoarseDropout(max_holes=16, min_holes=8, max_height=16, max_width=16, min_height=8, min_width=8, p=0.2)
                 ], p=0.2),
-               # A.Normalize(IMAGENET_NORMAL_MEAN, IMAGENET_NORMAL_STD), # Turning this on obliterated performance (only for validation metrics)
+               A.Normalize(IMAGENET_NORMAL_MEAN, IMAGENET_NORMAL_STD), # Turning this on obliterated performance (only for validation metrics)
                 ToTensorV2(), # np.array HWC image -> torch.Tensor CHW
             ]), # Try one where the normalization happens before colorjitter and channelshuffle -> not a good idea
 
             'val': A.Compose([
                 A.Resize(height=BACKBONE_IMG_SIZE[BACKBONE], width=BACKBONE_IMG_SIZE[BACKBONE]),
-                # A.Normalize(IMAGENET_NORMAL_MEAN, IMAGENET_NORMAL_STD),
+                A.Normalize(IMAGENET_NORMAL_MEAN, IMAGENET_NORMAL_STD),
                 ToTensorV2(), # np.array HWC image -> torch.Tensor CHW
             ])}
 
@@ -336,7 +336,7 @@ if __name__=='__main__':
     cb_lr_monitor = LearningRateMonitor(logging_interval='epoch')
 
     trainer = Trainer(max_epochs            = NUM_EPOCHS, 
-                      fast_dev_run          = True,     # Run a single-batch through train and val and see if the code works. No TB or wandb logs
+                      fast_dev_run          = False,     # Run a single-batch through train and val and see if the code works. No TB or wandb logs
                       gpus                  = -1,        # -1 to use all available GPUs, [0, 1, 2] to specify GPUs by index
                       auto_select_gpus      = True,
                       auto_lr_find          = True,

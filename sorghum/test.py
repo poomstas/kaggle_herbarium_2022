@@ -6,7 +6,7 @@ from pytorch_lightning import Trainer
 from albumentations.pytorch.transforms import ToTensorV2
 from train import SorghumLitModel
 from src.data import SorghumDataset
-from src.constants import BACKBONE_IMG_SIZE
+from src.constants import BACKBONE_IMG_SIZE, IMAGENET_NORMAL_MEAN, IMAGENET_NORMAL_STD
 
 # %%
 start_time = time.time()
@@ -43,7 +43,7 @@ model = SorghumLitModel.load_from_checkpoint(checkpoint_path=CHK_PATH)
 
 transform = A.Compose([
                 A.Resize(height=BACKBONE_IMG_SIZE[model.backbone], width=BACKBONE_IMG_SIZE[model.backbone]),
-                # A.Normalize(IMAGENET_NORMAL_MEAN, IMAGENET_NORMAL_STD),
+                A.Normalize(IMAGENET_NORMAL_MEAN, IMAGENET_NORMAL_STD),
                 ToTensorV2(), # np.array HWC image -> torch.Tensor CHW
             ])
 

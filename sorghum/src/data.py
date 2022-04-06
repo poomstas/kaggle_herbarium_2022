@@ -1,7 +1,7 @@
 # %%
 import os
 import pandas as pd
-import matplotlib.image as mpimg
+import cv2
 from torch.utils.data import Dataset, DataLoader, random_split
 from torchvision import transforms
 
@@ -48,7 +48,8 @@ class SorghumDataset(Dataset):
     
     def __getitem__(self, index):
         img_fullpath = self.df['image'][index]
-        img = mpimg.imread(img_fullpath) # Reads in [H, W, C]
+        img = cv2.imread(img_fullpath) # Reads in [H, W, C], values ranging from 0-255, BGR
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB) # Convert from BGR to RGB
 
         if self.transform is not None:
             img = self.transform(image=img)["image"]
