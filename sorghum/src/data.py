@@ -80,7 +80,7 @@ if __name__=='__main__':
 
     # Train Dataset
     print('Testing Training Dataset')
-    ds_train = SorghumDataset(csv_fullpath='./data/sorghum/train_cultivar_mapping.csv', 
+    ds_train = SorghumDataset(csv_fullpath='../data/sorghum/train_cultivar_mapping.csv', 
                               transform=transforms)
     dl_train = DataLoader(dataset=ds_train,
                           shuffle=True,
