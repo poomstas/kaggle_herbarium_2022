@@ -238,8 +238,16 @@ NUM_WORKERS         = 16            # use os.cpu_count()
 BACKBONE            = 'xception'
 
 host_name = socket.gethostname()
+print('\nHost Name: {}\n'.format(host_name))
+
+# Effective batch size = batch_size * gpus * num_nodes. 256 on A100, 64 on GTX 1080Ti
 if BACKBONE == 'xception':
-    BATCH_SIZE = 30 if host_name=='jupyter-brian' else 256 # effective batch size = batch_size * gpus * num_nodes. 256 on A100, 64 on GTX 1080Ti
+    if host_name=='jupyter-brian':
+        BATCH_SIZE = 30
+    elif host_name=='hades-ubuntu':
+        BATCH_SIZE = 30
+    else:
+        BATCH_SIZE = 256
 
 TRANSFORMS = {'train': A.Compose([
                 A.RandomResizedCrop(height=BACKBONE_IMG_SIZE[BACKBONE], width=BACKBONE_IMG_SIZE[BACKBONE]), # Improved final score by 0.023 (0.575->0.598)
@@ -274,6 +282,7 @@ TRANSFORMS = {'train': A.Compose([
             ])}
 
 TB_NOTES = "3OneOf_OneCycleLR_2FCLayer1stLayer4096_BaseCase20220404_075755"
+TB_NOTES += host_name
 
 '''
 # https://www.kaggle.com/code/pegasos/sorghum-pytorch-lightning-starter-training
@@ -327,7 +336,7 @@ if __name__=='__main__':
     cb_lr_monitor = LearningRateMonitor(logging_interval='epoch')
 
     trainer = Trainer(max_epochs            = NUM_EPOCHS, 
-                      fast_dev_run          = False,     # Run a single-batch through train and val and see if the code works. No TB or wandb logs
+                      fast_dev_run          = True,     # Run a single-batch through train and val and see if the code works. No TB or wandb logs
                       gpus                  = -1,        # -1 to use all available GPUs, [0, 1, 2] to specify GPUs by index
                       auto_select_gpus      = True,
                       auto_lr_find          = True,
