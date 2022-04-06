@@ -1,4 +1,5 @@
 # %%
+import os
 import csv
 import socket
 import torch
@@ -209,7 +210,7 @@ DROPOUT_RATE        = 0.3           # No dropout if 0
 NUM_CLASSES         = 100           # Fixed (for this challenge)
 NUM_EPOCHS          = 60    
 LR                  = 0.0001
-NUM_WORKERS         = 16            # use os.cpu_count()
+NUM_WORKERS         = os.cpu_count()
 BACKBONE            = 'xception'
 
 host_name = socket.gethostname()
