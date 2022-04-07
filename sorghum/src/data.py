@@ -1,7 +1,7 @@
 # %%
 import os
 import pandas as pd
-import matplotlib.image as mpimg
+import cv2
 from torch.utils.data import Dataset, DataLoader, random_split
 from torchvision import transforms
 
@@ -17,7 +17,7 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 # %%
 class SorghumDataset(Dataset):
-    def __init__(self, csv_fullpath, dataset_root='/home/brian/dataset/sorghum/', 
+    def __init__(self, csv_fullpath, dataset_root='/home/brian/github/dataset/sorghum/', 
                  transform=None, testset=False):
         self.transform                  = transform
         self.testset                    = testset # Boolean
@@ -48,7 +48,8 @@ class SorghumDataset(Dataset):
     
     def __getitem__(self, index):
         img_fullpath = self.df['image'][index]
-        img = mpimg.imread(img_fullpath) # Reads in [H, W, C]
+        img = cv2.imread(img_fullpath) # Reads in [H, W, C], values ranging from 0-255, BGR
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB) # Convert from BGR to RGB
 
         if self.transform is not None:
             img = self.transform(image=img)["image"]
@@ -80,7 +81,7 @@ if __name__=='__main__':
 
     # Train Dataset
     print('Testing Training Dataset')
-    ds_train = SorghumDataset(csv_fullpath='/home/brian/dataset/sorghum/train_cultivar_mapping.csv', 
+    ds_train = SorghumDataset(csv_fullpath='~/github/dataset/sorghum/train_cultivar_mapping.csv', 
                               transform=transforms)
     dl_train = DataLoader(dataset=ds_train,
                           shuffle=True,
