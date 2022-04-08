@@ -23,12 +23,14 @@ class XceptionModel(nn.Module):
         if self.n_hidden_nodes is None:
             self.img_fc1 = nn.Linear(n_backbone_out, num_classes)
         else:
-            self.img_fc1 = nn.Linear(n_backbone_out, n_hidden_nodes//2)
+            self.img_fc1 = nn.Linear(n_backbone_out, n_hidden_nodes) # 2048 to 4096
             self.relu1 = nn.ReLU()
-            self.fc2 = nn.Linear(n_hidden_nodes//2, n_hidden_nodes//4)
+            self.fc2 = nn.Linear(n_hidden_nodes, n_hidden_nodes//2) # 4096 to 2048
             self.relu2 = nn.ReLU()
-            self.fc3 = nn.Linear(n_hidden_nodes//4, num_classes)
+            self.fc3 = nn.Linear(n_hidden_nodes//2, n_hidden_nodes//4) # 2048 to 1024
             self.relu3 = nn.ReLU()
+            self.fc4 = nn.Linear(n_hidden_nodes//4, num_classes) # 1024 to 100
+            self.relu4 = nn.ReLU()
 
     def forward(self, x):
         if self.n_hidden_nodes is not None:
@@ -40,7 +42,9 @@ class XceptionModel(nn.Module):
             out = self.fc2(out)
             out = self.relu2(out)
             out = self.dropout(out)
-            out = self.fc3(out) # No activation and no softmax at the end (contained in F.cross_entropy())
+            out = self.fc3(out)
+            out = self.relu4(out)
+            out = self.fc4(out) # No activation and no softmax at the end (contained in F.cross_entropy())
         else:
             out = self.model(x)
             out = self.dropout(out)
