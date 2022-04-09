@@ -29,7 +29,7 @@ from src.utils import balance_val_split, get_stratified_sampler, get_stratified_
 # %%
 class SorghumLitModel(pl.LightningModule):
     def __init__(self, num_epochs, backbone, transforms, num_classes, batch_size, lr, n_hidden_nodes, 
-                 dropout_rate=0, pretrained=True, num_workers=4):
+                 dropout_rate=0, pretrained=True, num_workers=4, freeze_backbone=False, unfreeze_at=0):
         super(SorghumLitModel, self).__init__()
         self.save_hyperparameters() # Need this later to load_from_checkpoint without providing the hyperparams again
 
@@ -39,6 +39,8 @@ class SorghumLitModel(pl.LightningModule):
         self.lr = lr
         self.num_workers= num_workers
         self.n_hidden_nodes = n_hidden_nodes
+        self.freeze_backbone = freeze_backbone
+        self.unfreeze_at = unfreeze_at
 
         self.now = datetime.now().strftime('%Y%m%d_%H%M%S')
         self.tests_result_csv_filename = 'test_result_{}.csv'.format(self.now)
@@ -47,10 +49,10 @@ class SorghumLitModel(pl.LightningModule):
 
         if backbone == 'xception': # backbone_input_size = 3 x 299 x 299
             from src.model import XceptionModel
-            self.model = XceptionModel(num_classes, pretrained, n_hidden_nodes, dropout_rate)
-            backbone_input_size = (3, 299, 299)
-        
-        summary(self.model, input_size=backbone_input_size, device='cpu', batch_size=self.batch_size)
+            self.model = XceptionModel(num_classes, pretrained, n_hidden_nodes, dropout_rate, freeze_backbone)
+            self.backbone_input_size = (3, 299, 299)
+
+        summary(self.model, input_size=self.backbone_input_size, device='cpu', batch_size=self.batch_size)
 
     def forward(self, x):
         return self.model.forward(x)
@@ -190,6 +192,13 @@ class SorghumLitModel(pl.LightningModule):
         avg_loss = torch.stack([x['val_loss'] for x in outputs]).mean()
         self.log('val_loss_avg', avg_loss)
 
+    def on_train_epoch_start(self):
+        if self.current_epoch == self.unfreeze_at:
+            print('Unfreezing Backbone...')
+            for param in self.model.backbone.parameters():
+                param.requires_grad = True
+            print('Backbone unfreezing complete.')
+
     def test_step(self, batch, batch_idx):
         images, filenames = batch
         filenames = list(filenames)
@@ -213,6 +222,8 @@ NUM_EPOCHS          = 60
 LR                  = 0.0001
 NUM_WORKERS         = os.cpu_count()
 BACKBONE            = 'xception'
+FREEZE_BACKBONE     = True
+UNFREEZE_AT         = 3             # Disables freezing if 0 (epoch count starts at 0)
 
 host_name = socket.gethostname()
 print('\nHost Name: {}\n'.format(host_name))
@@ -261,8 +272,9 @@ TRANSFORMS = {'train': A.Compose([
 # Transforms above inspired by the following post:
 #   https://www.kaggle.com/code/pegasos/sorghum-pytorch-lightning-starter-training
 
-TB_NOTES = "0OneOf_OneCycleLR_2FCLayer1stLayer4096_BaseCaseSelf"
-TB_NOTES += "_" + host_name
+# TB_NOTES = "2Of_OneCycleLR_2FCLayer1stLayer4096_BaseCaseSelf"
+TB_NOTES = "0OneOF_OneCycleLR_3FCLayer1stLayer4096_BaseCase20220408-061759"
+TB_NOTES += "_" + host_name + "_" + BACKBONE
 
 # %%
 if __name__=='__main__':
@@ -310,6 +322,8 @@ if __name__=='__main__':
                             pretrained      = PRETRAINED, 
                             n_hidden_nodes  = N_HIDDEN_NODES, 
                             dropout_rate    = DROPOUT_RATE,
-                            num_workers     = NUM_WORKERS)
+                            num_workers     = NUM_WORKERS, 
+                            freeze_backbone = FREEZE_BACKBONE,
+                            unfreeze_at     = UNFREEZE_AT)
 
     trainer.fit(model)

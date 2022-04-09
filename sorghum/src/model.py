@@ -5,18 +5,22 @@ import torch.nn as nn
 
 from pretrainedmodels import xception
 # Also try densenet, efficientnet, swin, etc.
-import torchvision.models as models
 
 # %%
 class XceptionModel(nn.Module):
-    def __init__(self, num_classes, pretrained, n_hidden_nodes, dropout_rate):
+    def __init__(self, num_classes, pretrained, n_hidden_nodes, dropout_rate, freeze_backbone=False):
         super(XceptionModel, self).__init__()
         self.n_hidden_nodes = n_hidden_nodes
         self.dropout = nn.Dropout(p=dropout_rate)
 
         # INPUT_SIZE = 3 x 299 x 299
-        self.model              = xception(num_classes=1000, pretrained='imagenet' if pretrained else False) 
-        self.model.last_linear  = nn.Identity() # Outputs 2048
+        self.backbone              = xception(num_classes=1000, pretrained='imagenet' if pretrained else False) 
+        self.backbone.last_linear  = nn.Identity() # Outputs 2048
+
+        if freeze_backbone:
+            for param in self.backbone.parameters():
+                param.requires_grad = False
+
         n_backbone_out          = 2048
         self.target_size        = 299
 
@@ -34,7 +38,7 @@ class XceptionModel(nn.Module):
 
     def forward(self, x):
         if self.n_hidden_nodes is not None:
-            out = self.model(x)
+            out = self.backbone(x)
             out = self.dropout(out)
             out = self.img_fc1(out)
             out = self.relu1(out)
@@ -46,7 +50,7 @@ class XceptionModel(nn.Module):
             out = self.relu4(out)
             out = self.fc4(out) # No activation and no softmax at the end (contained in F.cross_entropy())
         else:
-            out = self.model(x)
+            out = self.backbone(x)
             out = self.dropout(out)
             out = self.img_fc1(out)
         return out
@@ -58,7 +62,7 @@ class EfficientNetB0(nn.Module):
         self.dropout = nn.Dropout(p=dropout_rate)
         num_classes  = 100
 
-        self.model = torch.hub.load('NVIDIA/DeepLearningExamples:torchhub', 'nvidia_efficientnet_b0', pretrained=pretrained)
+        self.backbone = torch.hub.load('NVIDIA/DeepLearningExamples:torchhub', 'nvidia_efficientnet_b0', pretrained=pretrained)
         self.target_size = 299
         n_backbone_out = 1000
 
@@ -70,7 +74,7 @@ class EfficientNetB0(nn.Module):
         self.relu3 = nn.ReLU()
     
     def forward(self, x):
-        out = self.model(x)
+        out = self.backbone(x)
         out = self.dropout(out)
         out = self.img_fc1(out)
         out = self.relu1(out)
