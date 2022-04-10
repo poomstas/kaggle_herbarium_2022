@@ -28,15 +28,15 @@ from src.utils import balance_val_split, get_stratified_sampler, get_stratified_
 
 # %% Hyperparameters
 PRETRAINED          = True
-N_HIDDEN_NODES      = 4096          # No hidden layer if None, backbone out has 2048, final has 100
+N_HIDDEN_NODES      = 2048          # No hidden layer if None, backbone out has 2048, final has 100
 DROPOUT_RATE        = 0.3           # No dropout if 0
 NUM_CLASSES         = 100           # Fixed (for this challenge)
 NUM_EPOCHS          = 60    
 LR                  = 0.0001
 NUM_WORKERS         = os.cpu_count()
 BACKBONE            = 'xception'
-FREEZE_BACKBONE     = True
-UNFREEZE_AT         = 5             # Disables freezing if 0 (epoch count starts at 0)
+FREEZE_BACKBONE     = False
+UNFREEZE_AT         = 0             # Disables freezing if 0 (epoch count starts at 0)
 
 host_name = socket.gethostname()
 print('\nHost Name: {}\n'.format(host_name))
@@ -57,21 +57,21 @@ TRANSFORMS = {'train': A.Compose([
                 A.RandomRotate90(p=0.5),
                 A.ShiftScaleRotate(p=0.5),
                 A.HueSaturationValue(p=0.5),
-                # A.OneOf([ # Including this improved performance from 0.725 to 0.730
-                #     A.RandomBrightnessContrast(p=0.5),
-                #     A.RandomGamma(p=0.5),
-                # ], p=0.5),
-                # A.OneOf([ # Decreased performance from 0.730 to 0.723
-                #     A.Blur(p=0.1),
-                #     A.GaussianBlur(p=0.1),
-                #     A.MotionBlur(p=0.1),
-                # ], p=0.1),
-                # A.OneOf([ # Increased performance from 0.723 to 0.727
-                #     A.GaussNoise(p=0.1),
-                #     A.ISONoise(p=0.1),
-                #     A.GridDropout(ratio=0.5, p=0.2),
-                #     A.CoarseDropout(max_holes=16, min_holes=8, max_height=16, max_width=16, min_height=8, min_width=8, p=0.2)
-                # ], p=0.2),
+                A.OneOf([ # Including this improved performance from 0.725 to 0.730
+                    A.RandomBrightnessContrast(p=0.5),
+                    A.RandomGamma(p=0.5),
+                ], p=0.5),
+                A.OneOf([ # Decreased performance from 0.730 to 0.723
+                    A.Blur(p=0.1),
+                    A.GaussianBlur(p=0.1),
+                    A.MotionBlur(p=0.1),
+                ], p=0.1),
+                A.OneOf([ # Increased performance from 0.723 to 0.727
+                    A.GaussNoise(p=0.1),
+                    A.ISONoise(p=0.1),
+                    A.GridDropout(ratio=0.5, p=0.2),
+                    A.CoarseDropout(max_holes=16, min_holes=8, max_height=16, max_width=16, min_height=8, min_width=8, p=0.2)
+                ], p=0.2),
                 A.Normalize(IMAGENET_NORMAL_MEAN, IMAGENET_NORMAL_STD),
                 ToTensorV2(), # np.array HWC image -> torch.Tensor CHW
             ]), # Try one where the normalization happens before colorjitter and channelshuffle -> not a good idea
@@ -84,14 +84,13 @@ TRANSFORMS = {'train': A.Compose([
 
 # Save TRANSFORMS to YAML (Use as example for better organizing runs)
 A.save(TRANSFORMS['train'], 'transform_train.yml', data_format='yaml')
-TRANSFORMS = A.load('transform_train.yml', data_format='yaml')
-print(TRANSFORMS)
+TRANSFORMS['train'] = A.load('transform_train.yml', data_format='yaml') # How to load
 
 # Transforms above inspired by the following post:
 #   https://www.kaggle.com/code/pegasos/sorghum-pytorch-lightning-starter-training
 
-TB_NOTES = "0OneOF_OneCycleLR_3FCLayer1stLayer4096_BaseCase20220408-061759"
-TB_NOTES += "_" + host_name + "_" + BACKBONE + "_UnfreezeAt" + str(UNFREEZE_AT)
+TB_NOTES = "3OneOF_OneCycleLR_3FC_BaseCaseSelf"
+TB_NOTES += "_" + host_name + "_" + BACKBONE + "_" + str(N_HIDDEN_NODES) + "_UnfreezeAt" + str(UNFREEZE_AT)
 
 
 # %%
