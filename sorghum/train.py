@@ -84,6 +84,8 @@ TRANSFORMS = {'train': A.Compose([
 
 # Save TRANSFORMS to YAML (Use as example for better organizing runs)
 A.save(TRANSFORMS['train'], 'transform_train.yml', data_format='yaml')
+TRANSFORMS = A.load('transform_train.yml', data_format='yaml')
+print(TRANSFORMS)
 
 # Transforms above inspired by the following post:
 #   https://www.kaggle.com/code/pegasos/sorghum-pytorch-lightning-starter-training
