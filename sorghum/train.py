@@ -3,11 +3,8 @@ import os
 import csv
 import socket
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
-import torchvision.transforms as transforms
-from torch.utils.data import DataLoader, random_split, Subset
-from torch.optim.lr_scheduler import ReduceLROnPlateau
+from torch.utils.data import DataLoader, Subset
 from datetime import datetime
 
 import pytorch_lightning as pl
@@ -15,7 +12,6 @@ from pytorch_lightning import Trainer
 from pytorch_lightning.loggers import TensorBoardLogger, WandbLogger
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping, LearningRateMonitor
 from pytorch_lightning.plugins import DDPPlugin
-from sklearn.model_selection import train_test_split
 
 import albumentations as A
 from albumentations.pytorch.transforms import ToTensorV2
@@ -23,8 +19,8 @@ from albumentations.pytorch.transforms import ToTensorV2
 from torchsummary import summary
 
 from src.data import SorghumDataset
-from src.constants import CULTIVAR_LABELS_IND2STR, CULTIVAR_LABELS_STR2IND, IMAGENET_NORMAL_MEAN, IMAGENET_NORMAL_STD, BACKBONE_IMG_SIZE
-from src.utils import balance_val_split, get_stratified_sampler, get_stratified_sampler_for_subset
+from src.constants import CULTIVAR_LABELS_IND2STR, IMAGENET_NORMAL_MEAN, IMAGENET_NORMAL_STD, BACKBONE_IMG_SIZE
+from src.utils import balance_val_split, get_stratified_sampler_for_subset
 
 # %% Hyperparameters
 PRETRAINED          = True
