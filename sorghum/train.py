@@ -26,6 +26,72 @@ from src.data import SorghumDataset
 from src.constants import CULTIVAR_LABELS_IND2STR, CULTIVAR_LABELS_STR2IND, IMAGENET_NORMAL_MEAN, IMAGENET_NORMAL_STD, BACKBONE_IMG_SIZE
 from src.utils import balance_val_split, get_stratified_sampler, get_stratified_sampler_for_subset
 
+# %% Hyperparameters
+PRETRAINED          = True
+N_HIDDEN_NODES      = 4096          # No hidden layer if None, backbone out has 2048, final has 100
+DROPOUT_RATE        = 0.3           # No dropout if 0
+NUM_CLASSES         = 100           # Fixed (for this challenge)
+NUM_EPOCHS          = 60    
+LR                  = 0.0001
+NUM_WORKERS         = os.cpu_count()
+BACKBONE            = 'xception'
+FREEZE_BACKBONE     = True
+UNFREEZE_AT         = 5             # Disables freezing if 0 (epoch count starts at 0)
+
+host_name = socket.gethostname()
+print('\nHost Name: {}\n'.format(host_name))
+
+# Effective batch size = batch_size * gpus * num_nodes. 256 on A100, 64 on GTX 1080Ti
+if BACKBONE == 'xception':
+    if host_name=='jupyter-brian':
+        BATCH_SIZE = 30
+    elif host_name=='hades-ubuntu':
+        BATCH_SIZE = 32
+    else:
+        BATCH_SIZE = 256
+
+TRANSFORMS = {'train': A.Compose([
+                A.RandomResizedCrop(height=BACKBONE_IMG_SIZE[BACKBONE], width=BACKBONE_IMG_SIZE[BACKBONE]), # Improved final score by 0.023 (0.575->0.598)
+                A.HorizontalFlip(p=0.5), # Leaving this on improved performance (at 0.5)
+                A.VerticalFlip(p=0.5), # Leaving this on improved performance (at 0.5)
+                A.RandomRotate90(p=0.5),
+                A.ShiftScaleRotate(p=0.5),
+                A.HueSaturationValue(p=0.5),
+                # A.OneOf([ # Including this improved performance from 0.725 to 0.730
+                #     A.RandomBrightnessContrast(p=0.5),
+                #     A.RandomGamma(p=0.5),
+                # ], p=0.5),
+                # A.OneOf([ # Decreased performance from 0.730 to 0.723
+                #     A.Blur(p=0.1),
+                #     A.GaussianBlur(p=0.1),
+                #     A.MotionBlur(p=0.1),
+                # ], p=0.1),
+                # A.OneOf([ # Increased performance from 0.723 to 0.727
+                #     A.GaussNoise(p=0.1),
+                #     A.ISONoise(p=0.1),
+                #     A.GridDropout(ratio=0.5, p=0.2),
+                #     A.CoarseDropout(max_holes=16, min_holes=8, max_height=16, max_width=16, min_height=8, min_width=8, p=0.2)
+                # ], p=0.2),
+                A.Normalize(IMAGENET_NORMAL_MEAN, IMAGENET_NORMAL_STD),
+                ToTensorV2(), # np.array HWC image -> torch.Tensor CHW
+            ]), # Try one where the normalization happens before colorjitter and channelshuffle -> not a good idea
+
+            'val': A.Compose([
+                A.Resize(height=BACKBONE_IMG_SIZE[BACKBONE], width=BACKBONE_IMG_SIZE[BACKBONE]),
+                A.Normalize(IMAGENET_NORMAL_MEAN, IMAGENET_NORMAL_STD),
+                ToTensorV2(), # np.array HWC image -> torch.Tensor CHW
+            ])}
+
+# Save TRANSFORMS to YAML (Use as example for better organizing runs)
+A.save(TRANSFORMS['train'], 'transform_train.yml', data_format='yaml')
+
+# Transforms above inspired by the following post:
+#   https://www.kaggle.com/code/pegasos/sorghum-pytorch-lightning-starter-training
+
+TB_NOTES = "0OneOF_OneCycleLR_3FCLayer1stLayer4096_BaseCase20220408-061759"
+TB_NOTES += "_" + host_name + "_" + BACKBONE + "_UnfreezeAt" + str(UNFREEZE_AT)
+
+
 # %%
 class SorghumLitModel(pl.LightningModule):
     def __init__(self, num_epochs, backbone, transforms, num_classes, batch_size, lr, n_hidden_nodes, 
@@ -212,69 +278,6 @@ class SorghumLitModel(pl.LightningModule):
                 writer.writerow(['filename', 'cultivar'])
             for classification, filename in zip(out_indx, filenames):
                 writer.writerow([filename, CULTIVAR_LABELS_IND2STR[classification]])
-
-# %% Hyperparameters
-PRETRAINED          = True
-N_HIDDEN_NODES      = 4096          # No hidden layer if None, backbone out has 2048, final has 100
-DROPOUT_RATE        = 0.3           # No dropout if 0
-NUM_CLASSES         = 100           # Fixed (for this challenge)
-NUM_EPOCHS          = 60    
-LR                  = 0.0001
-NUM_WORKERS         = os.cpu_count()
-BACKBONE            = 'xception'
-FREEZE_BACKBONE     = True
-UNFREEZE_AT         = 3             # Disables freezing if 0 (epoch count starts at 0)
-
-host_name = socket.gethostname()
-print('\nHost Name: {}\n'.format(host_name))
-
-# Effective batch size = batch_size * gpus * num_nodes. 256 on A100, 64 on GTX 1080Ti
-if BACKBONE == 'xception':
-    if host_name=='jupyter-brian':
-        BATCH_SIZE = 30
-    elif host_name=='hades-ubuntu':
-        BATCH_SIZE = 32
-    else:
-        BATCH_SIZE = 256
-
-TRANSFORMS = {'train': A.Compose([
-                A.RandomResizedCrop(height=BACKBONE_IMG_SIZE[BACKBONE], width=BACKBONE_IMG_SIZE[BACKBONE]), # Improved final score by 0.023 (0.575->0.598)
-                A.HorizontalFlip(p=0.5), # Leaving this on improved performance (at 0.5)
-                A.VerticalFlip(p=0.5), # Leaving this on improved performance (at 0.5)
-                A.RandomRotate90(p=0.5),
-                A.ShiftScaleRotate(p=0.5),
-                A.HueSaturationValue(p=0.5),
-                # A.OneOf([ # Including this improved performance from 0.725 to 0.730
-                #     A.RandomBrightnessContrast(p=0.5),
-                #     A.RandomGamma(p=0.5),
-                # ], p=0.5),
-                # A.OneOf([ # Decreased performance from 0.730 to 0.723
-                #     A.Blur(p=0.1),
-                #     A.GaussianBlur(p=0.1),
-                #     A.MotionBlur(p=0.1),
-                # ], p=0.1),
-                # A.OneOf([ # Increased performance from 0.723 to 0.727
-                #     A.GaussNoise(p=0.1),
-                #     A.ISONoise(p=0.1),
-                #     A.GridDropout(ratio=0.5, p=0.2),
-                #     A.CoarseDropout(max_holes=16, min_holes=8, max_height=16, max_width=16, min_height=8, min_width=8, p=0.2)
-                # ], p=0.2),
-                A.Normalize(IMAGENET_NORMAL_MEAN, IMAGENET_NORMAL_STD),
-                ToTensorV2(), # np.array HWC image -> torch.Tensor CHW
-            ]), # Try one where the normalization happens before colorjitter and channelshuffle -> not a good idea
-
-            'val': A.Compose([
-                A.Resize(height=BACKBONE_IMG_SIZE[BACKBONE], width=BACKBONE_IMG_SIZE[BACKBONE]),
-                A.Normalize(IMAGENET_NORMAL_MEAN, IMAGENET_NORMAL_STD),
-                ToTensorV2(), # np.array HWC image -> torch.Tensor CHW
-            ])}
-
-# Transforms above inspired by the following post:
-#   https://www.kaggle.com/code/pegasos/sorghum-pytorch-lightning-starter-training
-
-# TB_NOTES = "2Of_OneCycleLR_2FCLayer1stLayer4096_BaseCaseSelf"
-TB_NOTES = "0OneOF_OneCycleLR_3FCLayer1stLayer4096_BaseCase20220408-061759"
-TB_NOTES += "_" + host_name + "_" + BACKBONE
 
 # %%
 if __name__=='__main__':
