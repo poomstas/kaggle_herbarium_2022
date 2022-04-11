@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import torch.nn as nn
 
 from pretrainedmodels import xception
+from efficientnet_pytorch import EfficientNet
 # Also try densenet, efficientnet, swin, etc.
 
 # %%
@@ -55,16 +56,20 @@ class XceptionModel(nn.Module):
             out = self.img_fc1(out)
         return out
 # %%
-class EfficientNetB0(nn.Module):
+class EfficientNetB3(nn.Module):
     ''' Building in progress... '''
-    def __init__(self, pretrained, n_hidden_nodes, dropout_rate):
-        super(EfficientNetB0, self).__init__()
+    def __init__(self, n_hidden_nodes, dropout_rate, freeze_backbone):
+        super(EfficientNetB3, self).__init__()
         self.dropout = nn.Dropout(p=dropout_rate)
         num_classes  = 100
 
-        self.backbone = torch.hub.load('NVIDIA/DeepLearningExamples:torchhub', 'nvidia_efficientnet_b0', pretrained=pretrained)
-        self.target_size = 299
-        n_backbone_out = 1000
+        self.backbone= EfficientNet.from_pretrained('efficientnet-b3') # Load pretrained model by default
+        self.target_size = 350 # The loaded backbone supports different input sizes; this is not fixed.
+        n_backbone_out = 1000 # This one is fixed though.
+
+        if freeze_backbone:
+            for param in self.backbone.parameters():
+                param.requires_grad = False
 
         self.img_fc1 = nn.Linear(n_backbone_out, n_hidden_nodes//2)
         self.relu1 = nn.ReLU()
@@ -87,7 +92,8 @@ class EfficientNetB0(nn.Module):
 
 # %%
 if __name__=='__main__':
-    model = EfficientNetB0(pretrained=True, n_hidden_nodes=1024, dropout_rate=0.5)
+    # model = EfficientNetB0(pretrained=True, n_hidden_nodes=1024, dropout_rate=0.5)
+    model = EfficientNetB3(n_hidden_nodes=1024, dropout_rate=0.5)
 
     print(model)
 

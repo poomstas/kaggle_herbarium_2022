@@ -30,9 +30,9 @@ NUM_CLASSES         = 100           # Fixed (for this challenge)
 NUM_EPOCHS          = 60    
 LR                  = 0.0001
 NUM_WORKERS         = os.cpu_count()
-BACKBONE            = 'xception'
+BACKBONE            = 'efficientnet-b3' # ['xception', 'efficientnet-b3']
 FREEZE_BACKBONE     = False
-UNFREEZE_AT         = 0             # Disables freezing if 0 (epoch count starts at 0)
+UNFREEZE_AT         = 99999         # Disables freezing if 0 (epoch count starts at 0)
 
 host_name = socket.gethostname()
 print('\nHost Name: {}\n'.format(host_name))
@@ -45,6 +45,13 @@ if BACKBONE == 'xception':
         BATCH_SIZE = 32
     else:
         BATCH_SIZE = 256
+elif BACKBONE == 'efficientnet-b3':
+    if host_name=='jupyter-brian':
+        BATCH_SIZE = 99999
+    elif host_name=='hades-ubuntu':
+        BATCH_SIZE = 99999
+    else:
+        BATCH_SIZE = 128
 
 TRANSFORMS = {'train': A.Compose([
                 A.RandomResizedCrop(height=BACKBONE_IMG_SIZE[BACKBONE], width=BACKBONE_IMG_SIZE[BACKBONE]), # Improved final score by 0.023 (0.575->0.598)
@@ -85,7 +92,7 @@ TRANSFORMS['train'] = A.load('transform_train.yml', data_format='yaml') # How to
 # Transforms above inspired by the following post:
 #   https://www.kaggle.com/code/pegasos/sorghum-pytorch-lightning-starter-training
 
-TB_NOTES = "3OneOF_OneCycleLR_3FC_BaseCaseSelf"
+TB_NOTES = "3OneOF_OneCycleLR_3FC_BaseCase"
 TB_NOTES += "_" + host_name + "_" + BACKBONE + "_" + str(N_HIDDEN_NODES) + "_UnfreezeAt" + str(UNFREEZE_AT)
 
 
@@ -110,10 +117,14 @@ class SorghumLitModel(pl.LightningModule):
         self.csv_header_written = False
         print('Run ID: ', self.now)
 
-        if backbone == 'xception': # backbone_input_size = 3 x 299 x 299
+        if backbone == 'xception': # backbone_input_size = 3 x 299 x 299 (fixed)
             from src.model import XceptionModel
             self.model = XceptionModel(num_classes, pretrained, n_hidden_nodes, dropout_rate, freeze_backbone)
             self.backbone_input_size = (3, 299, 299)
+        elif backbone == 'efficientnet-b3': # backbone_input_size can be adjusted, but we'll set it to 3 x 350 x 350
+            from src.model import EfficientNetB3
+            self.model = EfficientNetB3(n_hidden_nodes, dropout_rate, freeze_backbone)
+            self.backbone_input_size = (3, 350, 350)
 
         summary(self.model, input_size=self.backbone_input_size, device='cpu', batch_size=self.batch_size)
 
