@@ -299,7 +299,7 @@ if __name__=='__main__':
     # Saves checkpoints at every epoch
     cb_checkpoint = ModelCheckpoint(dirpath     = './tb_logs/{}/'.format(now), 
                                     monitor     = 'val_loss', 
-                                    filename    = '{epoch:02d}-{val_loss:.2f}',
+                                    filename    = '{epoch:02d}-{val_loss:.5f}',
                                     save_top_k  = 3)
 
     cb_earlystopping = EarlyStopping(monitor    = 'val_loss',
