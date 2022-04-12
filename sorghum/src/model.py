@@ -57,15 +57,50 @@ class XceptionModel(nn.Module):
         return out
 # %%
 class EfficientNetB3(nn.Module):
-    ''' Building in progress... '''
-    def __init__(self, n_hidden_nodes, dropout_rate, freeze_backbone):
+    def __init__(self, n_hidden_nodes, dropout_rate, freeze_backbone=False):
         super(EfficientNetB3, self).__init__()
         self.dropout = nn.Dropout(p=dropout_rate)
         num_classes  = 100
 
         self.backbone= EfficientNet.from_pretrained('efficientnet-b3') # Load pretrained model by default
-        self.target_size = 350 # The loaded backbone supports different input sizes; this is not fixed.
+        self.target_size = 512 # The loaded backbone supports different input sizes; this is not fixed.
         n_backbone_out = 1000 # This one is fixed though.
+
+        if freeze_backbone:
+            for param in self.backbone.parameters():
+                param.requires_grad = False
+
+        self.img_fc1 = nn.Linear(n_backbone_out, n_hidden_nodes//2)
+        self.relu1 = nn.ReLU()
+        self.fc2 = nn.Linear(n_hidden_nodes//2, n_hidden_nodes//4)
+        self.relu2 = nn.ReLU()
+        self.fc3 = nn.Linear(n_hidden_nodes//4, num_classes)
+        self.relu3 = nn.ReLU()
+    
+    def forward(self, x):
+        out = self.backbone(x)
+        out = self.dropout(out)
+        out = self.img_fc1(out)
+        out = self.relu1(out)
+        out = self.dropout(out)
+        out = self.fc2(out)
+        out = self.relu2(out)
+        out = self.dropout(out)
+        out = self.fc3(out) # No activation and no softmax at the end (contained in F.cross_entropy())
+        return out
+
+class ResNeSt269(nn.Module):
+    def __init__(self, n_hidden_nodes, dropout_rate, freeze_backbone=False):
+        super(ResNeSt269, self).__init__()
+        self.dropout = nn.Dropout(p=dropout_rate)
+        num_classes  = 100
+
+        # https://github.com/zhanghang1989/ResNeSt#pretrained-models
+        torch.hub.list('zhanghang1989/ResNeSt', force_reload=True)
+        self.backbone = torch.hub.load('zhanghang1989/ResNeSt', 'resnest50', pretrained=True) # Load pretrained model by default
+        self.target_size = 512 # The loaded backbone supports different input sizes; this is not fixed.
+
+        n_backbone_out = 1000 # This one is fixed.
 
         if freeze_backbone:
             for param in self.backbone.parameters():
@@ -92,8 +127,8 @@ class EfficientNetB3(nn.Module):
 
 # %%
 if __name__=='__main__':
-    # model = EfficientNetB0(pretrained=True, n_hidden_nodes=1024, dropout_rate=0.5)
     model = EfficientNetB3(n_hidden_nodes=1024, dropout_rate=0.5)
+    model = ResNeSt269(n_hidden_nodes=1024, dropout_rate=0.5)
 
     print(model)
 
