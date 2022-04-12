@@ -1,4 +1,5 @@
 # %%
+import os
 import time
 import albumentations as A
 from torch.utils.data import DataLoader
@@ -30,25 +31,35 @@ start_time = time.time()
 # CHK_PATH = "/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220404_103901_1OneOf_OneCycleLR_2FCLayer1stLayer4096_BaseCase20220404_075755/epoch=56-val_loss=0.02.ckpt"
 # CHK_PATH = "/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220404_134736_2OneOf_OneCycleLR_2FCLayer1stLayer4096_BaseCase20220404_075755/epoch=59-val_loss=0.02.ckpt"
 # CHK_PATH = "/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220404_171151_2OneOf_OneCycleLR_2FCLayer1stLayer4096_BaseCase20220404_075755/epoch=58-val_loss=0.02.ckpt"
+# CHK_PATH = "/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220411_063830_3OneOF_OneCycleLR_3FC_BaseCaseSelf_nipa2022-49703_xception_2048_UnfreezeAt0/epoch=36-val_loss=0.06.ckpt"
+# CHK_PATH = "/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220411_081219_3OneOF_OneCycleLR_3FC_BaseCaseSelf_nipa2022-49703_xception_2048_UnfreezeAt0/epoch=53-val_loss=0.01.ckpt"
+# CHK_PATH = "/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220411_114332_EffNetB3_3OneOF_OneCycleLR_3FC_BaseCase_nipa2022-49703_efficientnet-b3_2048_UnfreezeAt99999/epoch=55-val_loss=0.00.ckpt" # 350x350 test_result_20220411_155751.csv // 0.771
+# CHK_PATH = "/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220411_165911_3OneOF_OneCycleLR_3FC_BaseCase_nipa2022-49703_efficientnet-b3_2048_UnfreezeAt99999/epoch=52-val_loss=0.00.ckpt" # 512 x 512 test_result_20220411_221241.csv //
+# CHK_PATH = "/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220411_165911_3OneOF_OneCycleLR_3FC_BaseCase_nipa2022-49703_efficientnet-b3_2048_UnfreezeAt99999/epoch=57-val_loss=0.00.ckpt" # 512 x 512 test_result_20220411_221457.csv //
+# CHK_PATH = "/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220411_165911_3OneOF_OneCycleLR_3FC_BaseCase_nipa2022-49703_efficientnet-b3_2048_UnfreezeAt99999/epoch=59-val_loss=0.00.ckpt" # 512 x 512 test_result_20220411_221709.csv // 0.843
+# CHK_PATH = "/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220411_224324_3OneOF_OneCycleLR_3FC_BaseCase_nipa2022-49703_resnest-269_2048_UnfreezeAt99999/epoch=59-val_loss=0.00255.ckpt"
+# CHK_PATH = "/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220412_062407_3OneOF_OneCycleLR_3FC_ChangedLRScheme_BaseCase_nipa2022-49703_resnest-269_2048_UnfreezeAt99999/epoch=50-val_loss=0.00271.ckpt" # 0.830
 
 # To Try
 CHK_PATH = ""
 # CHK_PATH = ""
 # CHK_PATH = ""
-# CHK_PATH = ""
 
 # %%
 # Need to have caled self.save_hyperparameters() in model init for the below to work!
+csv_file_name = CHK_PATH.split('/')[6] + ".csv"
+
 model = SorghumLitModel.load_from_checkpoint(checkpoint_path=CHK_PATH) 
+backbone_name = 'efficientnet-b3'
 
 transform = A.Compose([
-                A.Resize(height=BACKBONE_IMG_SIZE[model.backbone], width=BACKBONE_IMG_SIZE[model.backbone]),
+                A.Resize(height=BACKBONE_IMG_SIZE[backbone_name], width=BACKBONE_IMG_SIZE[backbone_name]),
                 A.Normalize(IMAGENET_NORMAL_MEAN, IMAGENET_NORMAL_STD),
                 ToTensorV2(), # np.array HWC image -> torch.Tensor CHW
             ])
 
-test_dataset = SorghumDataset(csv_fullpath='test.csv', testset=True, transform=transform) # xception: 299, vit: 384
-dl_test = DataLoader(dataset=test_dataset, shuffle=False, batch_size=512, num_workers=16)
+test_dataset = SorghumDataset(csv_fullpath='test.csv', testset=True, transform=transform) # xception: 299
+dl_test = DataLoader(dataset=test_dataset, shuffle=False, batch_size=128, num_workers=os.cpu_count())
 
 trainer = Trainer(gpus=1)
 results = trainer.test(model=model, dataloaders=dl_test, verbose=True)
