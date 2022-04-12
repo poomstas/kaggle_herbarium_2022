@@ -30,7 +30,7 @@ NUM_CLASSES         = 100           # Fixed (for this challenge)
 NUM_EPOCHS          = 60    
 LR                  = 0.0001
 NUM_WORKERS         = os.cpu_count()
-BACKBONE            = 'efficientnet-b3' # ['xception', 'efficientnet-b3']
+BACKBONE            = 'resnest-269' # ['xception', 'efficientnet-b3', 'resnest-269']
 FREEZE_BACKBONE     = False
 UNFREEZE_AT         = 99999         # Disables freezing if 0 (epoch count starts at 0)
 
@@ -51,7 +51,14 @@ elif BACKBONE == 'efficientnet-b3':
     elif host_name=='hades-ubuntu':
         BATCH_SIZE = 99999
     else:
-        BATCH_SIZE = 128
+        BATCH_SIZE = 64
+elif BACKBONE == 'resnest-269':
+    if host_name=='jupyter-brian':
+        BATCH_SIZE = 99999
+    elif host_name=='hades-ubuntu':
+        BATCH_SIZE = 99999
+    else:
+        BATCH_SIZE = 64
 
 TRANSFORMS = {'train': A.Compose([
                 A.RandomResizedCrop(height=BACKBONE_IMG_SIZE[BACKBONE], width=BACKBONE_IMG_SIZE[BACKBONE]), # Improved final score by 0.023 (0.575->0.598)
@@ -92,7 +99,7 @@ TRANSFORMS['train'] = A.load('transform_train.yml', data_format='yaml') # How to
 # Transforms above inspired by the following post:
 #   https://www.kaggle.com/code/pegasos/sorghum-pytorch-lightning-starter-training
 
-TB_NOTES = "3OneOF_OneCycleLR_3FC_BaseCase"
+TB_NOTES = "3OneOF_OneCycleLR_3FC_ChangedLRScheme_BaseCase"
 TB_NOTES += "_" + host_name + "_" + BACKBONE + "_" + str(N_HIDDEN_NODES) + "_UnfreezeAt" + str(UNFREEZE_AT)
 
 
@@ -120,13 +127,17 @@ class SorghumLitModel(pl.LightningModule):
         if backbone == 'xception': # backbone_input_size = 3 x 299 x 299 (fixed)
             from src.model import XceptionModel
             self.model = XceptionModel(num_classes, pretrained, n_hidden_nodes, dropout_rate, freeze_backbone)
-            self.backbone_input_size = (3, 299, 299)
         elif backbone == 'efficientnet-b3': # backbone_input_size can be adjusted, but we'll set it to 3 x 350 x 350
             from src.model import EfficientNetB3
             self.model = EfficientNetB3(n_hidden_nodes, dropout_rate, freeze_backbone)
-            self.backbone_input_size = (3, 350, 350)
+        elif backbone == 'resnest-269':
+            from src.model import ResNeSt269
+            self.model = ResNeSt269(n_hidden_nodes, dropout_rate, freeze_backbone)
 
-        summary(self.model, input_size=self.backbone_input_size, device='cpu', batch_size=self.batch_size)
+        summary(model       = self.model, 
+                input_size  = (3, BACKBONE_IMG_SIZE[backbone], BACKBONE_IMG_SIZE[backbone]), 
+                batch_size  = self.batch_size,
+                device      = 'cpu')
 
     def forward(self, x):
         return self.model.forward(x)
@@ -204,10 +215,10 @@ class SorghumLitModel(pl.LightningModule):
         scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, 
                                                         epochs              = self.num_epochs, 
                                                         steps_per_epoch     = len(self.train_loader), # The number of steps per epoch to train for. This is used along with epochs in order to infer the total number of steps in the cycle if a value for total_steps is not provided. Default: None
-                                                        max_lr              = 7.5e-4, 
+                                                        max_lr              = 2.5e-4, 
                                                         pct_start           = 0.3,  # The percentage of the cycle spent increasing the learning rate Default: 0.3
                                                         div_factor          = 25,   # Determines the initial learning rate via initial_lr = max_lr/div_factor Default: 25
-                                                        final_div_factor    = 1e+4) # Determines the minimum learning rate via min_lr = initial_lr/final_div_factor Default: 1e4
+                                                        final_div_factor    = 5e+4) # Determines the minimum learning rate via min_lr = initial_lr/final_div_factor Default: 1e4
         scheduler = {'scheduler': scheduler, 'interval': 'step'}
 
         return [optimizer], [scheduler]
