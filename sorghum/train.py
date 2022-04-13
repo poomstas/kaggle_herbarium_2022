@@ -3,6 +3,7 @@ import os
 import csv
 import socket
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader, Subset
 from datetime import datetime
@@ -21,8 +22,10 @@ from torchsummary import summary
 from src.data import SorghumDataset
 from src.constants import CULTIVAR_LABELS_IND2STR, IMAGENET_NORMAL_MEAN, IMAGENET_NORMAL_STD, BACKBONE_IMG_SIZE
 from src.utils import balance_val_split, get_stratified_sampler_for_subset
+from src.learnable_resizer import LearnToResize, LearnToResizeKaggle
 
 # %% Hyperparameters
+RESIZER             = True          # Apply "Learning to Resize Images for Computer Vision Tasks by Talebi et al., (2021)"
 PRETRAINED          = True
 N_HIDDEN_NODES      = 2048          # No hidden layer if None, backbone out has 2048, final has 100
 DROPOUT_RATE        = 0.3           # No dropout if 0
@@ -30,7 +33,7 @@ NUM_CLASSES         = 100           # Fixed (for this challenge)
 NUM_EPOCHS          = 60    
 LR                  = 0.0001
 NUM_WORKERS         = os.cpu_count()
-BACKBONE            = 'resnest-269' # ['xception', 'efficientnet-b3', 'resnest-269']
+BACKBONE            = 'efficientnet-b3' # ['xception', 'efficientnet-b3', 'resnest-269']
 FREEZE_BACKBONE     = False
 UNFREEZE_AT         = 99999         # Disables freezing if 0 (epoch count starts at 0)
 
@@ -51,46 +54,51 @@ elif BACKBONE == 'efficientnet-b3':
     elif host_name=='hades-ubuntu':
         BATCH_SIZE = 99999
     else:
-        BATCH_SIZE = 64
+        BATCH_SIZE = 32 if RESIZER else 64
 elif BACKBONE == 'resnest-269':
     if host_name=='jupyter-brian':
         BATCH_SIZE = 99999
     elif host_name=='hades-ubuntu':
         BATCH_SIZE = 99999
     else:
-        BATCH_SIZE = 64
+        BATCH_SIZE = 32 if RESIZER else 64
 
-TRANSFORMS = {'train': A.Compose([
-                A.RandomResizedCrop(height=BACKBONE_IMG_SIZE[BACKBONE], width=BACKBONE_IMG_SIZE[BACKBONE]), # Improved final score by 0.023 (0.575->0.598)
-                A.HorizontalFlip(p=0.5), # Leaving this on improved performance (at 0.5)
-                A.VerticalFlip(p=0.5), # Leaving this on improved performance (at 0.5)
-                A.RandomRotate90(p=0.5),
-                A.ShiftScaleRotate(p=0.5),
-                A.HueSaturationValue(p=0.5),
-                A.OneOf([ # Including this improved performance from 0.725 to 0.730
-                    A.RandomBrightnessContrast(p=0.5),
-                    A.RandomGamma(p=0.5),
-                ], p=0.5),
-                A.OneOf([ # Decreased performance from 0.730 to 0.723
-                    A.Blur(p=0.1),
-                    A.GaussianBlur(p=0.1),
-                    A.MotionBlur(p=0.1),
-                ], p=0.1),
-                A.OneOf([ # Increased performance from 0.723 to 0.727
-                    A.GaussNoise(p=0.1),
-                    A.ISONoise(p=0.1),
-                    A.GridDropout(ratio=0.5, p=0.2),
-                    A.CoarseDropout(max_holes=16, min_holes=8, max_height=16, max_width=16, min_height=8, min_width=8, p=0.2)
-                ], p=0.2),
-                A.Normalize(IMAGENET_NORMAL_MEAN, IMAGENET_NORMAL_STD),
-                ToTensorV2(), # np.array HWC image -> torch.Tensor CHW
-            ]), # Try one where the normalization happens before colorjitter and channelshuffle -> not a good idea
+transform_list_train = [
+        A.RandomResizedCrop(height=BACKBONE_IMG_SIZE[BACKBONE], width=BACKBONE_IMG_SIZE[BACKBONE]), # Improved final score by 0.023 (0.575->0.598)
+        A.HorizontalFlip(p=0.5), # Leaving this on improved performance (at 0.5)
+        A.VerticalFlip(p=0.5), # Leaving this on improved performance (at 0.5)
+        A.RandomRotate90(p=0.5),
+        A.ShiftScaleRotate(p=0.5),
+        A.HueSaturationValue(p=0.5),
+        A.OneOf([ # Including this improved performance from 0.725 to 0.730
+            A.RandomBrightnessContrast(p=0.5),
+            A.RandomGamma(p=0.5),
+        ], p=0.5),
+        A.OneOf([ # Decreased performance from 0.730 to 0.723
+            A.Blur(p=0.1),
+            A.GaussianBlur(p=0.1),
+            A.MotionBlur(p=0.1),
+        ], p=0.1),
+        A.OneOf([ # Increased performance from 0.723 to 0.727
+            A.GaussNoise(p=0.1),
+            A.ISONoise(p=0.1),
+            A.GridDropout(ratio=0.5, p=0.2),
+            A.CoarseDropout(max_holes=16, min_holes=8, max_height=16, max_width=16, min_height=8, min_width=8, p=0.2)
+        ], p=0.2),
+        A.Normalize(IMAGENET_NORMAL_MEAN, IMAGENET_NORMAL_STD),
+        ToTensorV2(), # np.array HWC image -> torch.Tensor CHW]
+]
+trainsform_list_val  = [
+        A.Resize(height=BACKBONE_IMG_SIZE[BACKBONE], width=BACKBONE_IMG_SIZE[BACKBONE]),
+        A.Normalize(IMAGENET_NORMAL_MEAN, IMAGENET_NORMAL_STD),
+        ToTensorV2(), # np.array HWC image -> torch.Tensor CHW]
+]
 
-            'val': A.Compose([
-                A.Resize(height=BACKBONE_IMG_SIZE[BACKBONE], width=BACKBONE_IMG_SIZE[BACKBONE]),
-                A.Normalize(IMAGENET_NORMAL_MEAN, IMAGENET_NORMAL_STD),
-                ToTensorV2(), # np.array HWC image -> torch.Tensor CHW
-            ])}
+if RESIZER: # Remove the resizing augmentations
+    transform_list_train.pop(0)
+    trainsform_list_val.pop(0)
+
+TRANSFORMS = {'train': A.Compose(transform_list_train), 'val': A.Compose(trainsform_list_val)}
 
 # Save TRANSFORMS to YAML (Use as example for better organizing runs)
 A.save(TRANSFORMS['train'], 'transform_train.yml', data_format='yaml')
@@ -100,7 +108,7 @@ TRANSFORMS['train'] = A.load('transform_train.yml', data_format='yaml') # How to
 #   https://www.kaggle.com/code/pegasos/sorghum-pytorch-lightning-starter-training
 
 TB_NOTES = "3OneOF_OneCycleLR_3FC_ChangedLRScheme_BaseCase"
-TB_NOTES += "_" + host_name + "_" + BACKBONE + "_" + str(N_HIDDEN_NODES) + "_UnfreezeAt" + str(UNFREEZE_AT)
+TB_NOTES += "_" + host_name + "_" + BACKBONE + "_" + str(N_HIDDEN_NODES) + "_UnfreezeAt" + str(UNFREEZE_AT) + "_ResizerApplied_" + str(RESIZER)
 
 
 # %%
@@ -133,6 +141,11 @@ class SorghumLitModel(pl.LightningModule):
         elif backbone == 'resnest-269':
             from src.model import ResNeSt269
             self.model = ResNeSt269(n_hidden_nodes, dropout_rate, freeze_backbone)
+
+        if RESIZER:
+            target_size_xy = (BACKBONE_IMG_SIZE[backbone], BACKBONE_IMG_SIZE[backbone])
+            resizer_module = LearnToResize(num_res_blocks=1, target_size=target_size_xy)
+            self.model = nn.Sequential(resizer_module, self.model)
 
         summary(model       = self.model, 
                 input_size  = (3, BACKBONE_IMG_SIZE[backbone], BACKBONE_IMG_SIZE[backbone]), 
