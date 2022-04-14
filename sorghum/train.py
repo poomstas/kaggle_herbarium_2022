@@ -25,7 +25,7 @@ from src.utils import balance_val_split, get_stratified_sampler_for_subset
 from src.learnable_resizer import LearnToResize, LearnToResizeKaggle
 
 # %% Hyperparameters
-RESIZER             = True          # Apply "Learning to Resize Images for Computer Vision Tasks by Talebi et al., (2021)"
+RESIZER             = False         # Apply "Learning to Resize Images for Computer Vision Tasks by Talebi et al., (2021)"
 PRETRAINED          = True
 N_HIDDEN_NODES      = 2048          # No hidden layer if None, backbone out has 2048, final has 100
 DROPOUT_RATE        = 0.3           # No dropout if 0
@@ -54,7 +54,7 @@ elif BACKBONE == 'efficientnet-b3':
     elif host_name=='hades-ubuntu':
         BATCH_SIZE = 99999
     else:
-        BATCH_SIZE = 32 if RESIZER else 64
+        BATCH_SIZE = 32 if RESIZER else 16
 elif BACKBONE == 'resnest-269':
     if host_name=='jupyter-brian':
         BATCH_SIZE = 99999
@@ -64,7 +64,7 @@ elif BACKBONE == 'resnest-269':
         BATCH_SIZE = 32 if RESIZER else 64
 
 transform_list_train = [
-        A.RandomResizedCrop(height=BACKBONE_IMG_SIZE[BACKBONE], width=BACKBONE_IMG_SIZE[BACKBONE]), # Improved final score by 0.023 (0.575->0.598)
+        # A.RandomResizedCrop(height=BACKBONE_IMG_SIZE[BACKBONE], width=BACKBONE_IMG_SIZE[BACKBONE]), # Improved final score by 0.023 (0.575->0.598)
         A.HorizontalFlip(p=0.5), # Leaving this on improved performance (at 0.5)
         A.VerticalFlip(p=0.5), # Leaving this on improved performance (at 0.5)
         A.RandomRotate90(p=0.5),
@@ -89,7 +89,7 @@ transform_list_train = [
         ToTensorV2(), # np.array HWC image -> torch.Tensor CHW]
 ]
 trainsform_list_val  = [
-        A.Resize(height=BACKBONE_IMG_SIZE[BACKBONE], width=BACKBONE_IMG_SIZE[BACKBONE]),
+        # A.Resize(height=BACKBONE_IMG_SIZE[BACKBONE], width=BACKBONE_IMG_SIZE[BACKBONE]),
         A.Normalize(IMAGENET_NORMAL_MEAN, IMAGENET_NORMAL_STD),
         ToTensorV2(), # np.array HWC image -> torch.Tensor CHW]
 ]
@@ -107,7 +107,7 @@ TRANSFORMS['train'] = A.load('transform_train.yml', data_format='yaml') # How to
 # Transforms above inspired by the following post:
 #   https://www.kaggle.com/code/pegasos/sorghum-pytorch-lightning-starter-training
 
-TB_NOTES = "3OneOF_OneCycleLR_3FC_ChangedLRScheme_BaseCase"
+TB_NOTES = "InputRes1024_3FC_ReducedMaxLR_BaseCase"
 TB_NOTES += "_" + host_name + "_" + BACKBONE + "_" + str(N_HIDDEN_NODES) + "_UnfreezeAt" + str(UNFREEZE_AT) + "_ResizerApplied_" + str(RESIZER)
 
 
@@ -228,7 +228,7 @@ class SorghumLitModel(pl.LightningModule):
         scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, 
                                                         epochs              = self.num_epochs, 
                                                         steps_per_epoch     = len(self.train_loader), # The number of steps per epoch to train for. This is used along with epochs in order to infer the total number of steps in the cycle if a value for total_steps is not provided. Default: None
-                                                        max_lr              = 2.5e-4, 
+                                                        max_lr              = 2.5e-4/4, 
                                                         pct_start           = 0.3,  # The percentage of the cycle spent increasing the learning rate Default: 0.3
                                                         div_factor          = 25,   # Determines the initial learning rate via initial_lr = max_lr/div_factor Default: 25
                                                         final_div_factor    = 5e+4) # Determines the minimum learning rate via min_lr = initial_lr/final_div_factor Default: 1e4

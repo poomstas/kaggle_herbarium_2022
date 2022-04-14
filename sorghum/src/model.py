@@ -63,7 +63,7 @@ class EfficientNetB3(nn.Module):
         num_classes  = 100
 
         self.backbone= EfficientNet.from_pretrained('efficientnet-b3') # Load pretrained model by default
-        self.target_size = 512 # The loaded backbone supports different input sizes; this is not fixed.
+        self.target_size = 1024 # The loaded backbone supports different input sizes; this is not fixed.
         n_backbone_out = 1000 # This one is fixed though.
 
         if freeze_backbone:
