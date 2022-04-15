@@ -52,7 +52,7 @@ elif BACKBONE == 'efficientnet-b3':
     if host_name=='jupyter-brian':
         BATCH_SIZE = 99999
     elif host_name=='hades-ubuntu':
-        BATCH_SIZE = 99999
+        BATCH_SIZE = 16 if RESIZER else 32
     else:
         BATCH_SIZE = 32 if RESIZER else 16
 elif BACKBONE == 'efficientnet-b7':
