@@ -238,7 +238,7 @@ class SorghumLitModel(pl.LightningModule):
         scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, 
                                                         epochs              = self.num_epochs, 
                                                         steps_per_epoch     = len(self.train_loader), # The number of steps per epoch to train for. This is used along with epochs in order to infer the total number of steps in the cycle if a value for total_steps is not provided. Default: None
-                                                        max_lr              = 2.5e-4/4, 
+                                                        max_lr              = 2.5e-4/8, 
                                                         pct_start           = 0.3,  # The percentage of the cycle spent increasing the learning rate Default: 0.3
                                                         div_factor          = 25,   # Determines the initial learning rate via initial_lr = max_lr/div_factor Default: 25
                                                         final_div_factor    = 5e+4) # Determines the minimum learning rate via min_lr = initial_lr/final_div_factor Default: 1e4
