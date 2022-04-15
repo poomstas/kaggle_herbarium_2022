@@ -56,13 +56,14 @@ class XceptionModel(nn.Module):
             out = self.img_fc1(out)
         return out
 # %%
-class EfficientNetB3(nn.Module):
-    def __init__(self, n_hidden_nodes, dropout_rate, freeze_backbone=False):
-        super(EfficientNetB3, self).__init__()
+class EfficientNetModel(nn.Module):
+    def __init__(self, n_hidden_nodes, dropout_rate, freeze_backbone=False, version='b3'):
+        super(EfficientNetModel, self).__init__()
         self.dropout = nn.Dropout(p=dropout_rate)
         num_classes  = 100
 
-        self.backbone= EfficientNet.from_pretrained('efficientnet-b3') # Load pretrained model by default
+        model_name = 'efficientnet-' + version
+        self.backbone= EfficientNet.from_pretrained(model_name) # Load pretrained model by default
         self.target_size = 1024 # The loaded backbone supports different input sizes; this is not fixed.
         n_backbone_out = 1000 # This one is fixed though.
 
@@ -127,7 +128,7 @@ class ResNeSt269(nn.Module):
 
 # %%
 if __name__=='__main__':
-    model = EfficientNetB3(n_hidden_nodes=1024, dropout_rate=0.5)
+    model = EfficientNet(n_hidden_nodes=1024, dropout_rate=0.5)
     model = ResNeSt269(n_hidden_nodes=1024, dropout_rate=0.5)
 
     print(model)

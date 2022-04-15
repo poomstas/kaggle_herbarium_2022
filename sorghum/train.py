@@ -33,7 +33,7 @@ NUM_CLASSES         = 100           # Fixed (for this challenge)
 NUM_EPOCHS          = 60    
 LR                  = 0.0001
 NUM_WORKERS         = os.cpu_count()
-BACKBONE            = 'efficientnet-b3' # ['xception', 'efficientnet-b3', 'resnest-269']
+BACKBONE            = 'efficientnet-b7' # ['xception', 'efficientnet-b3', 'efficientnet-b7', 'resnest-269']
 FREEZE_BACKBONE     = False
 UNFREEZE_AT         = 99999         # Disables freezing if 0 (epoch count starts at 0)
 
@@ -55,6 +55,13 @@ elif BACKBONE == 'efficientnet-b3':
         BATCH_SIZE = 99999
     else:
         BATCH_SIZE = 32 if RESIZER else 16
+elif BACKBONE == 'efficientnet-b7':
+    if host_name=='jupyter-brian':
+        BATCH_SIZE = 99999
+    elif host_name=='hades-ubuntu':
+        BATCH_SIZE = 99999
+    else:
+        BATCH_SIZE = 32 if RESIZER else 6
 elif BACKBONE == 'resnest-269':
     if host_name=='jupyter-brian':
         BATCH_SIZE = 99999
@@ -136,8 +143,11 @@ class SorghumLitModel(pl.LightningModule):
             from src.model import XceptionModel
             self.model = XceptionModel(num_classes, pretrained, n_hidden_nodes, dropout_rate, freeze_backbone)
         elif backbone == 'efficientnet-b3': # backbone_input_size can be adjusted, but we'll set it to 3 x 350 x 350
-            from src.model import EfficientNetB3
-            self.model = EfficientNetB3(n_hidden_nodes, dropout_rate, freeze_backbone)
+            from src.model import EfficientNetModel
+            self.model = EfficientNetModel(n_hidden_nodes, dropout_rate, freeze_backbone, version='b3')
+        elif backbone == 'efficientnet-b7': # backbone_input_size can be adjusted, but we'll set it to 3 x 350 x 350
+            from src.model import EfficientNetModel
+            self.model = EfficientNetModel(n_hidden_nodes, dropout_rate, freeze_backbone, version='b7')
         elif backbone == 'resnest-269':
             from src.model import ResNeSt269
             self.model = ResNeSt269(n_hidden_nodes, dropout_rate, freeze_backbone)
