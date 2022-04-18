@@ -114,8 +114,8 @@ TRANSFORMS['train'] = A.load('transform_train.yml', data_format='yaml') # How to
 # Transforms above inspired by the following post:
 #   https://www.kaggle.com/code/pegasos/sorghum-pytorch-lightning-starter-training
 
-TB_NOTES = "InputRes1024_3FC_ReducedMaxLR_BaseCase"
-TB_NOTES += "_" + host_name + "_" + BACKBONE + "_" + str(N_HIDDEN_NODES) + "_UnfreezeAt" + str(UNFREEZE_AT) + "_ResizerApplied_" + str(RESIZER)
+TB_NOTES = "InputRes{}_3FC_ReducedMaxLR".format(BACKBONE_IMG_SIZE[BACKBONE])
+TB_NOTES += "_" + host_name + "_" + BACKBONE + "_" + str(N_HIDDEN_NODES) + "_UnfreezeAt" + str(UNFREEZE_AT) + "_ResizerApplied_" + str(RESIZER) + "_KaggleResizer"
 
 
 # %%
