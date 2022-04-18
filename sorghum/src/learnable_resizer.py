@@ -19,7 +19,7 @@ class LearnToResizeKaggle(nn.Module):
         super(LearnToResizeKaggle, self).__init__()
         self.avgpool = nn.AvgPool2d(2)
         self.downsize = nn.Sequential(
-            nn.Conv2d(in_channels=1, out_channels=7, kernel_size=5, stride=2, padding=2, bias=False),
+            nn.Conv2d(in_channels=3, out_channels=7, kernel_size=5, stride=2, padding=2, bias=False),
             nn.BatchNorm2d(num_features=7),
             nn.ReLU())
 
@@ -89,16 +89,16 @@ class LearnToResize(nn.Module):
 if __name__=='__main__':
     # Testing the code used for kaggle (taken from https://www.kaggle.com/c/ranzcr-clip-catheter-line-classification/discussion/226557)
     module = LearnToResizeKaggle()
-    img = torch.rand(16, 1, 2048, 2048, dtype=torch.float32) # batch_size=16
+    img = torch.rand(16, 3, 1024, 1024, dtype=torch.float32) # batch_size=16
     out = module(img)
     print('Input shape:  ', img.shape)
     print('Output shape: ', out.shape)
-    print(summary(module, (1, 2048, 2048), device='cpu'))
+    print(summary(module, (3, 1024, 1024), device='cpu'))
 
     # Testing the paper implementation ("Learning to Resize Images for Computer Vision Tasks")
-    img = torch.rand(16, 3, 2048, 2048, dtype=torch.float32) # batch_size=16
-    model = LearnToResize(num_res_blocks=1, target_size=(1024, 1024))
-    out = model(img)
-    summary(model, (3, 2048, 2048), device='cpu')
+    # img = torch.rand(16, 3, 2048, 2048, dtype=torch.float32) # batch_size=16
+    # model = LearnToResize(num_res_blocks=1, target_size=(1024, 1024))
+    # out = model(img)
+    # summary(model, (3, 2048, 2048), device='cpu')
 
     # https://discuss.pytorch.org/t/re-using-layers-in-model/48186/2
