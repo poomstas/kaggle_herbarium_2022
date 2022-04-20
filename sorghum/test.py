@@ -39,6 +39,14 @@ start_time = time.time()
 # CHK_PATH = "/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220411_165911_3OneOF_OneCycleLR_3FC_BaseCase_nipa2022-49703_efficientnet-b3_2048_UnfreezeAt99999/epoch=59-val_loss=0.00.ckpt" # 512 x 512 test_result_20220411_221709.csv // 0.843
 # CHK_PATH = "/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220411_224324_3OneOF_OneCycleLR_3FC_BaseCase_nipa2022-49703_resnest-269_2048_UnfreezeAt99999/epoch=59-val_loss=0.00255.ckpt"
 # CHK_PATH = "/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220412_062407_3OneOF_OneCycleLR_3FC_ChangedLRScheme_BaseCase_nipa2022-49703_resnest-269_2048_UnfreezeAt99999/epoch=50-val_loss=0.00271.ckpt" # 0.830
+# CHK_PATH = "/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220412_150637_3OneOF_OneCycleLR_3FC_ChangedLRScheme_BaseCase_nipa2022-49703_efficientnet-b3_2048_UnfreezeAt99999/epoch=50-val_loss=0.00402.ckpt"
+# CHK_PATH = "/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220413_103158_3OneOF_OneCycleLR_3FC_ChangedLRScheme_BaseCase_nipa2022-49703_efficientnet-b3_2048_UnfreezeAt99999_ResizerApplied_True/epoch=52-val_loss=0.00311.ckpt"
+# CHK_PATH = "/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220413_225929_3OneOF_OneCycleLR_3FC_ChangedLRScheme_BaseCase_nipa2022-49703_resnest-269_2048_UnfreezeAt99999_ResizerApplied_True/epoch=31-val_loss=0.01208.ckpt"
+# CHK_PATH = "/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220414_140928_InputRes1024_3FC_ReducedMaxLR_BaseCase_nipa2022-49703_efficientnet-b3_2048_UnfreezeAt99999_ResizerApplied_False/epoch=46-val_loss=0.00378.ckpt" # 0.856 Top
+# CHK_PATH = "/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220414_140928_InputRes1024_3FC_ReducedMaxLR_BaseCase_nipa2022-49703_efficientnet-b3_2048_UnfreezeAt99999_ResizerApplied_False/epoch=48-val_loss=0.00391.ckpt"
+# CHK_PATH = "/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220415_104735_InputRes1024_3FC_ReducedMaxLR_BaseCase_nipa2022-49703_efficientnet-b7_2048_UnfreezeAt99999_ResizerApplied_False/epoch=40-val_loss=0.00184.ckpt" # 0.854 1024 x 1024 test_result_20220417_171214.csv
+# CHK_PATH = "/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220415_104735_InputRes1024_3FC_ReducedMaxLR_BaseCase_nipa2022-49703_efficientnet-b7_2048_UnfreezeAt99999_ResizerApplied_False/epoch=38-val_loss=0.00212.ckpt" # 0.845 1024x1024  test_result_20220417_203941.csv 
+# CHK_PATH = "/home/brian/sorghum/tb_logs/20220419_080226_InputRes1024_3FC_ReducedMaxLR_nipa2022-49703_efficientnet-b3_2048_UnfreezeAt99999_ResizerApplied_False_KaggleResizer_DropoutRate0.5/epoch=45-val_loss=0.00783.ckpt" 
 
 # To Try
 CHK_PATH = ""
@@ -50,16 +58,16 @@ CHK_PATH = ""
 csv_file_name = CHK_PATH.split('/')[6] + ".csv"
 
 model = SorghumLitModel.load_from_checkpoint(checkpoint_path=CHK_PATH) 
-backbone_name = 'efficientnet-b3'
+# BACKBONE = 'efficientnet-b3'
 
-transform = A.Compose([
-                A.Resize(height=BACKBONE_IMG_SIZE[backbone_name], width=BACKBONE_IMG_SIZE[backbone_name]),
+TRANSFORM = A.Compose([
+                # A.Resize(height=BACKBONE_IMG_SIZE[BACKBONE], width=BACKBONE_IMG_SIZE[BACKBONE]),
                 A.Normalize(IMAGENET_NORMAL_MEAN, IMAGENET_NORMAL_STD),
                 ToTensorV2(), # np.array HWC image -> torch.Tensor CHW
             ])
 
-test_dataset = SorghumDataset(csv_fullpath='test.csv', testset=True, transform=transform) # xception: 299
-dl_test = DataLoader(dataset=test_dataset, shuffle=False, batch_size=128, num_workers=os.cpu_count())
+test_dataset = SorghumDataset(csv_fullpath='test.csv', testset=True, transform=TRANSFORM) # xception: 299
+dl_test = DataLoader(dataset=test_dataset, shuffle=False, batch_size=32, num_workers=os.cpu_count())
 
 trainer = Trainer(gpus=1)
 results = trainer.test(model=model, dataloaders=dl_test, verbose=True)
