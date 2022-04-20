@@ -19,7 +19,7 @@ class LearnToResizeKaggle(nn.Module):
         super(LearnToResizeKaggle, self).__init__()
         self.avgpool = nn.AvgPool2d(2)
         self.downsize = nn.Sequential(
-            nn.Conv2d(in_channels=3, out_channels=7, kernel_size=5, stride=2, padding=2, bias=False),
+            nn.Conv2d(in_channels=1, out_channels=7, kernel_size=5, stride=2, padding=2, bias=False),
             nn.BatchNorm2d(num_features=7),
             nn.ReLU())
 
