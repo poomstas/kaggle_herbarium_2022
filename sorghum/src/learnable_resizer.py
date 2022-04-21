@@ -96,9 +96,11 @@ if __name__=='__main__':
     print(summary(module, (3, 1024, 1024), device='cpu'))
 
     # Testing the paper implementation ("Learning to Resize Images for Computer Vision Tasks")
-    # img = torch.rand(16, 3, 2048, 2048, dtype=torch.float32) # batch_size=16
-    # model = LearnToResize(num_res_blocks=1, target_size=(1024, 1024))
-    # out = model(img)
-    # summary(model, (3, 2048, 2048), device='cpu')
+    img = torch.rand(16, 3, 1024, 1024, dtype=torch.float32) # batch_size=16
+    model = LearnToResize(num_res_blocks=1, target_size=(512, 512))
+    out = model(img)
+    print('Input shape:  ', img.shape)
+    print('Output shape: ', out.shape)
+    summary(model, (3, 1024, 1024), device='cpu')
 
     # https://discuss.pytorch.org/t/re-using-layers-in-model/48186/2
