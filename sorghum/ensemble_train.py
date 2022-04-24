@@ -114,9 +114,10 @@ class EnsembleModel(pl.LightningModule):
         super(EnsembleModel, self).__init__()
         self.save_hyperparameters() # Need this later to load_from_checkpoint without providing the hyperparams again
         
-        self.model_1_path    = model_1_path
-        self.model_2_path    = model_2_path
-        self.model_3_path    = model_3_path
+        self.model_1         = SorghumLitModel.load_from_checkpoint(checkpoint_path=model_1_path)
+        self.model_2         = SorghumLitModel.load_from_checkpoint(checkpoint_path=model_2_path)
+        self.model_3         = SorghumLitModel.load_from_checkpoint(checkpoint_path=model_3_path)
+
         self.num_epochs      = num_epochs
         self.transforms      = transforms
         self.batch_size      = batch_size
