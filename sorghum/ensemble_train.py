@@ -128,6 +128,47 @@ class EnsembleModel(pl.LightningModule):
     def forward(self, x):
         pass
 
+    def setup(self, stage=None):
+        csv_fullpath = './data/sorghum/train_cultivar_mapping.csv'
+        assert os.path.exists(csv_fullpath), '.csv file does not exist. Check directory reference.'
+
+        train_dataset = SorghumDataset(csv_fullpath     = csv_fullpath,
+                                        transform        = self.transforms['train'],
+                                        testset          = False)
+        val_dataset   = SorghumDataset(csv_fullpath     = csv_fullpath,
+                                        transform        = self.transforms['val'],
+                                        testset          = False)
+
+        # Stratified separation of training and validation sets
+        train_indx, val_indx = balance_val_split(dataset        = train_dataset,
+                                                    stratify_by    = 'cultivar_indx',
+                                                    test_size      = 0.2,
+                                                    random_state   = None)
+
+        # Get subsets from separate dataset sources bec. transforms are different
+        self.train_dataset = Subset(train_dataset, indices=train_indx)
+        self.val_dataset   = Subset(val_dataset  , indices=val_indx)
+
+        # Stratified sampler for generating batches (within training and validation stages)
+        self.train_sampler, _ = get_stratified_sampler_for_subset(self.train_dataset, target_variable_name='cultivar_indx')
+        self.val_sampler = None     # Don't apply stratified sampling within validation sets
+
+        shuffle = False if self.train_sampler is not None else True
+
+        self.train_loader = DataLoader(dataset       = self.train_dataset,
+                                        batch_size    = self.batch_size, 
+                                        shuffle       = shuffle, 
+                                        num_workers   = self.num_workers,
+                                        persistent_workers = True,
+                                        sampler       = self.train_sampler)
+
+        self.val_loader = DataLoader(dataset         = self.val_dataset, 
+                                        batch_size      = self.batch_size, 
+                                        shuffle         = False, 
+                                        num_workers     = self.num_workers,
+                                        persistent_workers = True,
+                                        sampler         = self.val_sampler)
+
 
 
 # %%
