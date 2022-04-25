@@ -25,30 +25,7 @@ from src.learnable_resizer import LearnToResize, LearnToResizeKaggle
 from src.model import Identity
 
 from train import SorghumLitModel
-# %%
-''' Below needs to be re-verified:
 
-MODEL_1
-    (img_fc1): Linear(in_features=1000, out_features=1024, bias=True)
-    (relu1): ReLU()
-    (fc2): Linear(in_features=1024, out_features=512, bias=True)
-    (relu2): ReLU()
-    (fc3): Linear(in_features=512, out_features=100, bias=True)
-    (relu3): ReLU()
-
-MODEL_2
-    (img_fc1): Linear(in_features=1000, out_features=1024, bias=True)
-    (relu1): ReLU()
-    (fc2): Linear(in_features=1024, out_features=512, bias=True)
-    (relu2): ReLU()
-    (fc3): Linear(in_features=512, out_features=100, bias=True)
-    (relu3): ReLU()
-
-MODEL_3
-    ???
-    ???
-    ???
-'''
 # %%
 transform_list_train = [
         # A.RandomResizedCrop(height=BACKBONE_IMG_SIZE[BACKBONE], width=BACKBONE_IMG_SIZE[BACKBONE]),
@@ -119,15 +96,10 @@ class EnsembleModel(pl.LightningModule):
         self.model_2         = SorghumLitModel.load_from_checkpoint(checkpoint_path=model_2_path)
         self.model_3         = SorghumLitModel.load_from_checkpoint(checkpoint_path=model_3_path)
 
-        # Replace the last unnecessary layer with an Identity layer
+        # Replace the last unnecessary layer with an Identity layer (alternatively, use Identity() from src.model)
         self.model_1.model.fc3 = torch.nn.Identity()
         self.model_2.model.fc3 = torch.nn.Identity()
         self.model_3.model.fc3 = torch.nn.Identity()
-
-        # If the above doesn't work, then try below:
-        # self.model_1.model.fc3 = Identity()
-        # self.model_2.model.fc3 = Identity()
-        # self.model_3.model.fc3 = Identity()
 
         # Freeze pre-trained parts of the models
         for param in self.model_1.parameters():
