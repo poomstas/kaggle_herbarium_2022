@@ -8,6 +8,14 @@ from efficientnet_pytorch import EfficientNet
 # Also try densenet, efficientnet, swin, etc.
 
 # %%
+class Identity(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        return x
+
+# %%
 class XceptionModel(nn.Module):
     def __init__(self, num_classes, pretrained, n_hidden_nodes, dropout_rate, freeze_backbone=False):
         super(XceptionModel, self).__init__()
