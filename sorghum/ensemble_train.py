@@ -66,11 +66,8 @@ TRANSFORMS = {'train': A.Compose(transform_list_train), 'val': A.Compose(trainsf
 DROPOUT_RATE        = 0.5           # No dropout if 0
 NUM_EPOCHS          = 60    
 LR                  = 0.0001
-# NUM_WORKERS         = os.cpu_count()
-NUM_WORKERS         = 1
-BATCH_SIZE          = 32
-# FREEZE_BACKBONE     = False
-# UNFREEZE_AT         = 99999         # Disables freezing if 0 (epoch count starts at 0)
+NUM_WORKERS         = os.cpu_count() // 2
+BATCH_SIZE          = 42 # 43 failed OOM; 40 reached 33671 MB; 42 reached 35147 MB
 
 host_name = socket.gethostname()
 print('\nHost Name: {}\n'.format(host_name))
