@@ -84,7 +84,7 @@ TB_NOTES += "_DropoutRate{}".format(str(DROPOUT_RATE))
 class EnsembleModel(pl.LightningModule):
     def __init__(self, model_1_path, model_2_path, model_3_path, num_epochs, transforms, batch_size, lr, num_workers, dropout_rate=0.3):
         super(EnsembleModel, self).__init__()
-        # self.save_hyperparameters() # Need this later to load_from_checkpoint without providing the hyperparams again
+        self.save_hyperparameters() # Need this later to load_from_checkpoint without providing the hyperparams again
 
         self.num_epochs      = num_epochs
         self.transforms      = transforms
