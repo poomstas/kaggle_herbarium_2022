@@ -120,7 +120,7 @@ class EnsembleModel(pl.LightningModule):
     # Frankenstein the models together
     def forward(self, x):
         out1, out2, out3 = self.model_1(x), self.model_2(x), self.model_3(x)
-        out = torch.cat(out1, out2, out3) # 512 nodes each, 1536 nodes total after concat
+        out = torch.cat((out1, out2, out3), 1) # 512 nodes each, 1536 nodes total after concat
         out = self.dropout(out)
         out = self.fc_A(out)
         out = self.relu_A(out)
