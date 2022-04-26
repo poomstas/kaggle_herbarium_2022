@@ -92,6 +92,11 @@ class EnsembleModel(pl.LightningModule):
         self.lr              = lr
         self.num_workers     = num_workers
         
+        # Save the model paths in case of future reference
+        self.model_1_path   = model_1_path
+        self.model_2_path   = model_2_path
+        self.model_3_path   = model_3_path
+
         # Load the pre-trained models
         self.model_1         = SorghumLitModel.load_from_checkpoint(checkpoint_path=model_1_path)
         self.model_2         = SorghumLitModel.load_from_checkpoint(checkpoint_path=model_2_path)
