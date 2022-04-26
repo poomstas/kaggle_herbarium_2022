@@ -8,6 +8,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader, Subset
 from datetime import datetime
+import numpy as np
 
 import pytorch_lightning as pl
 from pytorch_lightning import Trainer
@@ -67,7 +68,7 @@ NUM_EPOCHS          = 60
 LR                  = 0.0001
 # NUM_WORKERS         = os.cpu_count()
 NUM_WORKERS         = 1
-BATCH_SIZE          = 4
+BATCH_SIZE          = 32
 # FREEZE_BACKBONE     = False
 # UNFREEZE_AT         = 99999         # Disables freezing if 0 (epoch count starts at 0)
 
@@ -242,9 +243,9 @@ class EnsembleModel(pl.LightningModule):
 
 # %%
 if __name__=='__main__':
-    MODEL_1_PATH = "/home/jovyan/github/kaggle_herbarium_2022/sorghum/ensemble_model_weights/epoch=48-val_loss=0.00391 copy.ckpt"
-    MODEL_2_PATH = "/home/jovyan/github/kaggle_herbarium_2022/sorghum/ensemble_model_weights/epoch=48-val_loss=0.00391.ckpt"
-    MODEL_3_PATH = "/home/jovyan/github/kaggle_herbarium_2022/sorghum/ensemble_model_weights/epoch=53-val_loss=0.00167.ckpt"
+    MODEL_1_PATH = "/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220414_140928_InputRes1024_3FC_ReducedMaxLR_BaseCase_nipa2022-49703_efficientnet-b3_2048_UnfreezeAt99999_ResizerApplied_False/epoch=48-val_loss=0.00391.ckpt" # 0.858
+    MODEL_2_PATH = "/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220424_073255_InputRes1024_3FC_ReducedMaxLR_BaseCase_nipa2022-49703_efficientnet-b7_2048_UnfreezeAt99999_ResizerApplied_False/epoch=35-val_loss=0.00229.ckpt" # 0.852
+    MODEL_3_PATH = "/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220420_035255_InputRes1024_3FC_ReducedMaxLR_nipa2022-49703_efficientnet-b3_2048_UnfreezeAt99999_ResizerApplied_False_DropoutRate0.5_BaseCase_20220414_140928/epoch=53-val_loss=0.00167.ckpt" # 0.849
 
     now = datetime.now().strftime('%Y%m%d_%H%M%S')
     if TB_NOTES != '':
@@ -285,10 +286,15 @@ if __name__=='__main__':
                           model_2_path  = MODEL_2_PATH,
                           model_3_path  = MODEL_3_PATH,
                           num_epochs    = NUM_EPOCHS,
-                          transforms    = transforms,
+                          transforms    = TRANSFORMS,
                           batch_size    = BATCH_SIZE,
                           lr            = LR,
                           num_workers   = NUM_WORKERS,
                           dropout_rate  = DROPOUT_RATE)
+
+    # RuntimeError: Modules with uninitialized parameters can't be used with `DistributedDataParallel`. Run a dummy forward pass to correctly initialize the modules
+    dum = np.random.randint(255, size=[16, 3, 1024, 1024])/255
+    dum = torch.from_numpy(dum).float()
+    _ = model(dum)
 
     trainer.fit(model)
