@@ -224,13 +224,6 @@ class EnsembleModel(pl.LightningModule):
         avg_loss = torch.stack([x['val_loss'] for x in outputs]).mean()
         self.log('val_loss_avg', avg_loss)
 
-    def on_train_epoch_start(self):
-        if self.current_epoch == self.unfreeze_at:
-            print('Unfreezing Backbone...')
-            for param in self.model.backbone.parameters():
-                param.requires_grad = True
-            print('Backbone unfreezing complete.')
-
     def test_step(self, batch, batch_idx):
         images, filenames = batch
         filenames = list(filenames)
