@@ -120,6 +120,10 @@ class EnsembleModel(pl.LightningModule):
         self.relu_B = nn.ReLU()
         self.relu_C = nn.ReLU()
 
+        self.csv_header_written = False
+        self.now = datetime.now().strftime('%Y%m%d_%H%M%S')
+        self.tests_result_csv_filename = 'test_result_{}.csv'.format(self.now)
+
     # Frankenstein the models together
     def forward(self, x):
         out1, out2, out3 = self.model_1(x), self.model_2(x), self.model_3(x)
