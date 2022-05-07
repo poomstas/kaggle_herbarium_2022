@@ -27,13 +27,14 @@ from src.learnable_resizer import LearnToResize, LearnToResizeKaggle
 # %% Hyperparameters
 RESIZER             = False         # Apply "Learning to Resize Images for Computer Vision Tasks by Talebi et al., (2021)"
 PRETRAINED          = True
-N_HIDDEN_NODES      = 2048          # No hidden layer if None, backbone out has 2048, final has 100
-DROPOUT_RATE        = 0.3           # No dropout if 0
+N_HIDDEN_NODES      = 1024          # No hidden layer if None, backbone out has 2048, final has 100
+DROPOUT_RATE        = 0.5           # No dropout if 0
 NUM_CLASSES         = 100           # Fixed (for this challenge)
 NUM_EPOCHS          = 60    
 LR                  = 0.0001
-NUM_WORKERS         = os.cpu_count()
-BACKBONE            = 'efficientnet-b7' # ['xception', 'efficientnet-b3', 'efficientnet-b7', 'resnest-269']
+NUM_WORKERS         = os.cpu_count()//2
+BACKBONE            = 'xception' # ['xception', 'efficientnet-b3', 'efficientnet-b7', 'resnest-269']
+# BACKBONE            = 'efficientnet-b3' # ['xception', 'efficientnet-b3', 'efficientnet-b7', 'resnest-269']
 FREEZE_BACKBONE     = False
 UNFREEZE_AT         = 99999         # Disables freezing if 0 (epoch count starts at 0)
 
@@ -47,7 +48,7 @@ if BACKBONE == 'xception':
     elif host_name=='hades-ubuntu':
         BATCH_SIZE = 32
     else:
-        BATCH_SIZE = 256
+        BATCH_SIZE = 32 if RESIZER else 16
 elif BACKBONE == 'efficientnet-b3':
     if host_name=='jupyter-brian':
         BATCH_SIZE = 99999
@@ -71,7 +72,7 @@ elif BACKBONE == 'resnest-269':
         BATCH_SIZE = 32 if RESIZER else 64
 
 transform_list_train = [
-        # A.RandomResizedCrop(height=BACKBONE_IMG_SIZE[BACKBONE], width=BACKBONE_IMG_SIZE[BACKBONE]), # Improved final score by 0.023 (0.575->0.598)
+        # A.RandomResizedCrop(height=BACKBONE_IMG_SIZE[BACKBONE], width=BACKBONE_IMG_SIZE[BACKBONE]),
         A.HorizontalFlip(p=0.5), # Leaving this on improved performance (at 0.5)
         A.VerticalFlip(p=0.5), # Leaving this on improved performance (at 0.5)
         A.RandomRotate90(p=0.5),
@@ -115,7 +116,8 @@ TRANSFORMS['train'] = A.load('transform_train.yml', data_format='yaml') # How to
 #   https://www.kaggle.com/code/pegasos/sorghum-pytorch-lightning-starter-training
 
 TB_NOTES = "InputRes{}_3FC_ReducedMaxLR".format(BACKBONE_IMG_SIZE[BACKBONE])
-TB_NOTES += "_" + host_name + "_" + BACKBONE + "_" + str(N_HIDDEN_NODES) + "_UnfreezeAt" + str(UNFREEZE_AT) + "_ResizerApplied_" + str(RESIZER) + "_KaggleResizer"
+TB_NOTES += "_" + host_name + "_" + BACKBONE + "_" + str(N_HIDDEN_NODES) + "_UnfreezeAt" + str(UNFREEZE_AT) + "_ResizerApplied_" + str(RESIZER)
+TB_NOTES += "_DropoutRate0.5_BaseCase_20220414_140928"
 
 
 # %%
