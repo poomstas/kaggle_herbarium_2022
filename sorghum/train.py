@@ -33,7 +33,7 @@ NUM_CLASSES         = 100           # Fixed (for this challenge)
 NUM_EPOCHS          = 60    
 LR                  = 0.0001
 NUM_WORKERS         = os.cpu_count()//2
-BACKBONE            = 'xception' # ['xception', 'efficientnet-b3', 'efficientnet-b7', 'resnest-269']
+BACKBONE            = 'resnest-269' # ['xception', 'efficientnet-b3', 'efficientnet-b7', 'resnest-269']
 # BACKBONE            = 'efficientnet-b3' # ['xception', 'efficientnet-b3', 'efficientnet-b7', 'resnest-269']
 FREEZE_BACKBONE     = False
 UNFREEZE_AT         = 99999         # Disables freezing if 0 (epoch count starts at 0)
@@ -69,7 +69,7 @@ elif BACKBONE == 'resnest-269':
     elif host_name=='hades-ubuntu':
         BATCH_SIZE = 99999
     else:
-        BATCH_SIZE = 32 if RESIZER else 64
+        BATCH_SIZE = 32 if RESIZER else 24
 
 transform_list_train = [
         # A.RandomResizedCrop(height=BACKBONE_IMG_SIZE[BACKBONE], width=BACKBONE_IMG_SIZE[BACKBONE]),
