@@ -103,6 +103,7 @@ class EnsembleModel(pl.LightningModule):
         self.model_1.model.fc3 = torch.nn.Identity()
         self.model_2.model.fc3 = torch.nn.Identity()
         self.model_3.model.fc3 = torch.nn.Identity()
+        self.model_3.model.fc4 = torch.nn.Identity() # Need to do this for Xception
 
         # Freeze pre-trained parts of the models
         for param in self.model_1.parameters():
@@ -249,9 +250,13 @@ class EnsembleModel(pl.LightningModule):
 
 # %%
 if __name__=='__main__':
-    MODEL_1_PATH = "/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220414_140928_InputRes1024_3FC_ReducedMaxLR_BaseCase_nipa2022-49703_efficientnet-b3_2048_UnfreezeAt99999_ResizerApplied_False/epoch=48-val_loss=0.00391.ckpt" # 0.858
-    MODEL_2_PATH = "/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220424_073255_InputRes1024_3FC_ReducedMaxLR_BaseCase_nipa2022-49703_efficientnet-b7_2048_UnfreezeAt99999_ResizerApplied_False/epoch=35-val_loss=0.00229.ckpt" # 0.852
-    MODEL_3_PATH = "/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220420_035255_InputRes1024_3FC_ReducedMaxLR_nipa2022-49703_efficientnet-b3_2048_UnfreezeAt99999_ResizerApplied_False_DropoutRate0.5_BaseCase_20220414_140928/epoch=53-val_loss=0.00167.ckpt" # 0.849
+    MODEL_1_PATH = "/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220414_140928_InputRes1024_3FC_ReducedMaxLR_BaseCase_nipa2022-49703_efficientnet-b3_2048_UnfreezeAt99999_ResizerApplied_False/epoch=48-val_loss=0.00391.ckpt" # 0.858 EfficientNetB3
+    MODEL_2_PATH = "/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220424_073255_InputRes1024_3FC_ReducedMaxLR_BaseCase_nipa2022-49703_efficientnet-b7_2048_UnfreezeAt99999_ResizerApplied_False/epoch=35-val_loss=0.00229.ckpt" # 0.852 EfficientNetB7
+    # MODEL_3_PATH = "/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220420_035255_InputRes1024_3FC_ReducedMaxLR_nipa2022-49703_efficientnet-b3_2048_UnfreezeAt99999_ResizerApplied_False_DropoutRate0.5_BaseCase_20220414_140928/epoch=53-val_loss=0.00167.ckpt" # 0.849 EfficientNetB3
+    MODEL_3_PATH = "/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220503_223502_InputRes299_3FC_ReducedMaxLR_nipa2022-49703_xception_1024_UnfreezeAt99999_ResizerApplied_False_DropoutRate0.5_BaseCase_20220414_140928/epoch=52-val_loss=0.00860.ckpt" # 0.828 xception
+
+
+    # "/home/brian/github/kaggle_herbarium_2022/sorghum/tb_logs/20220503_223502_InputRes299_3FC_ReducedMaxLR_nipa2022-49703_xception_1024_UnfreezeAt99999_ResizerApplied_False_DropoutRate0.5_BaseCase_20220414_140928/epoch=52-val_loss=0.00860.ckpt" # 0.828
 
     now = datetime.now().strftime('%Y%m%d_%H%M%S')
     if TB_NOTES != '':
